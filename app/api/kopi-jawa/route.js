@@ -1,7 +1,14 @@
 ﻿import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { verifySession } from '@/app/api/auth/route';
 
-export async function GET() {
+export async function GET(request) {
+  const token = request.cookies.get('kj_session')?.value;
+  const session = verifySession(token);
+  if (!session) {
+    return NextResponse.json({ error: 'Akses ditolak. Silakan login terlebih dahulu.' }, { status: 401 });
+  }
+
   try {
     const [bahanBaku] = await pool.query('SELECT * FROM bahan_baku ORDER BY created_at DESC');
     const [produk] = await pool.query('SELECT * FROM produk ORDER BY created_at DESC');
@@ -22,6 +29,16 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  const token = request.cookies.get('kj_session')?.value;
+  const session = verifySession(token);
+
+  if (!session) {
+    return NextResponse.json({ error: 'Sesi habis. Silakan login ulang.' }, { status: 401 });
+  }
+  if (session.role !== 'admin') {
+    return NextResponse.json({ error: 'Akun View-Only tidak diizinkan mengubah database!' }, { status: 403 });
+  }
+
   const connection = await pool.getConnection();
   try {
     const { action, payload } = await request.json();

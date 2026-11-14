@@ -10,17 +10,17 @@ import {
   Plus,
   Trash2,
   Edit3,
-  CheckCircle2,
   AlertCircle,
   TrendingUp,
   Wallet,
-  Calculator,
   Database,
   RefreshCw,
-  ArrowRight,
-  Sparkles,
   Check,
-  X
+  X,
+  Lock,
+  LogOut,
+  Eye,
+  ShieldCheck
 } from 'lucide-react';
 
 const formatRupiah = (angka) => {
@@ -42,8 +42,18 @@ const generateRandomBahanId = () => {
 };
 
 export default function KopiJawaApp() {
+  // Auth State
+  const [authChecking, setAuthChecking] = useState(true);
+  const [user, setUser] = useState(null); // { username, role: 'admin' | 'viewer' }
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginError, setLoginError] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
+
+  const isAdmin = user?.role === 'admin';
+
+  // App State
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -58,13 +68,13 @@ export default function KopiJawaApp() {
   const [targetCupHarian, setTargetCupHarian] = useState(25);
 
   // Form Bahan Baku
-const [newBahan, setNewBahan] = useState({
-  id: '',
-  nama_bahan: '',
-  ukuran_kemasan: '',
-  satuan: 'gr',
-  harga_beli: '',
-});
+  const [newBahan, setNewBahan] = useState({
+    id: '',
+    nama_bahan: '',
+    ukuran_kemasan: '',
+    satuan: 'gr',
+    harga_beli: '',
+  });
   const [editingBahanId, setEditingBahanId] = useState(null);
 
   // Form Menu (Layer 2 CRUD)
@@ -81,13 +91,36 @@ const [newBahan, setNewBahan] = useState({
   const [newOps, setNewOps] = useState({ nama_kebutuhan: '', periode: '1 Bulan', biaya_bulanan: '', catatan: '' });
   const [newInv, setNewInv] = useState({ nama_barang: '', kondisi: 'Baru', harga_barang: '', status_kebutuhan: 'Terpenuhi' });
 
-  // Fetch Data dari API TiDB Cloud
+  // Cek sesi login saat halaman pertama kali dibuka
+  useEffect(() => {
+    setNewBahan((prev) => ({ ...prev, id: generateRandomBahanId() }));
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth');
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.user);
+        }
+      } catch {
+        // Belum login
+      } finally {
+        setAuthChecking(false);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  // Fetch Data dari API TiDB Cloud setelah login berhasil
   const fetchAllData = async () => {
     setLoading(true);
     setErrorMsg('');
     try {
       const res = await fetch('/api/kopi-jawa');
       const data = await res.json();
+      if (res.status === 401) {
+        setUser(null);
+        return;
+      }
       if (!res.ok) throw new Error(data.error || 'Gagal mengambil data');
       setBahanBaku(data.bahanBaku || []);
       setProduk(data.produk || []);
@@ -102,12 +135,45 @@ const [newBahan, setNewBahan] = useState({
   };
 
   useEffect(() => {
-  setNewBahan((prev) => ({ ...prev, id: generateRandomBahanId() }));
-  fetchAllData();
-}, []);
+    if (user) {
+      fetchAllData();
+    }
+  }, [user]);
 
-  // Helper API Action
+  // Handler Login & Logout
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoggingIn(true);
+    setLoginError('');
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(loginForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login gagal');
+      setUser(data.user);
+      setLoginForm({ username: '', password: '' });
+    } catch (err) {
+      setLoginError(err.message);
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'LOGOUT' }),
+    });
+    setUser(null);
+  };
+
+  // Helper API Action (Khusus Admin)
   const sendAction = async (action, payload) => {
+    if (!isAdmin) return false;
     setSaving(true);
     try {
       const res = await fetch('/api/kopi-jawa', {
@@ -120,7 +186,7 @@ const [newBahan, setNewBahan] = useState({
       await fetchAllData();
       return true;
     } catch (err) {
-      alert('Error Database: ' + err.message);
+      alert('Error: ' + err.message);
       return false;
     } finally {
       setSaving(false);
@@ -149,27 +215,16 @@ const [newBahan, setNewBahan] = useState({
       const profit = hargaJual - totalHpp;
       const marginPct = totalHpp > 0 ? (profit / totalHpp) * 100 : 0;
 
-      return {
-        ...p,
-        resep: items,
-        totalHpp,
-        hargaJual,
-        profit,
-        marginPct,
-      };
+      return { ...p, resep: items, totalHpp, hargaJual, profit, marginPct };
     });
   }, [produk, resepDetail, bahanMap]);
 
   // Metrik Dashboard
   const stats = useMemo(() => {
     const avgHargaJual =
-      menuEnriched.length > 0
-        ? menuEnriched.reduce((acc, m) => acc + m.hargaJual, 0) / menuEnriched.length
-        : 0;
+      menuEnriched.length > 0 ? menuEnriched.reduce((acc, m) => acc + m.hargaJual, 0) / menuEnriched.length : 0;
     const avgProfitCup =
-      menuEnriched.length > 0
-        ? menuEnriched.reduce((acc, m) => acc + m.profit, 0) / menuEnriched.length
-        : 0;
+      menuEnriched.length > 0 ? menuEnriched.reduce((acc, m) => acc + m.profit, 0) / menuEnriched.length : 0;
     const totalOpsBulanan = operasional.reduce((acc, o) => acc + Number(o.biaya_bulanan), 0);
     const totalOpsHarian = totalOpsBulanan / 30;
     const totalInventaris = inventaris.reduce((acc, i) => acc + Number(i.harga_barang), 0);
@@ -249,11 +304,7 @@ const [newBahan, setNewBahan] = useState({
         ...menuForm,
         resep: [
           ...menuForm.resep,
-          {
-            bahan_baku_id: b.id,
-            jumlah_pemakaian: Number(jumlahPemakaianInput),
-            satuan_pemakaian: b.satuan,
-          },
+          { bahan_baku_id: b.id, jumlah_pemakaian: Number(jumlahPemakaianInput), satuan_pemakaian: b.satuan },
         ],
       });
     }
@@ -296,6 +347,85 @@ const [newBahan, setNewBahan] = useState({
     document.getElementById('layer-crud-menu')?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // ================= LAYAR LOADING AWAL =================
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-[#231710] flex items-center justify-center text-amber-200">
+        <div className="flex items-center gap-3 text-sm font-medium">
+          <RefreshCw className="w-5 h-5 animate-spin text-amber-500" />
+          Memeriksa sesi keamanan Kopi Jawa...
+        </div>
+      </div>
+    );
+  }
+
+  // ================= LAYAR LOGIN GERBANG UTAMA =================
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#231710] flex items-center justify-center p-4 font-sans">
+        <div className="w-full max-w-md bg-[#FAF6F1] rounded-3xl shadow-2xl overflow-hidden border border-[#3D291E]">
+          <div className="bg-[#2C1E16] p-8 text-center text-white space-y-2">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center shadow-lg mb-3">
+              <Coffee className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-wide">KOPI JAWA</h1>
+            <p className="text-xs text-amber-300/80 flex items-center justify-center gap-1.5">
+              <Lock className="w-3.5 h-3.5" /> Portal Internal Manajemen HPP & Operasional
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="p-8 space-y-5">
+            {loginError && (
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {loginError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#7A6355] mb-1.5">
+                Username
+              </label>
+              <input
+                type="text"
+                required
+                autoFocus
+                placeholder="Masukkan username admin / viewer"
+                value={loginForm.username}
+                onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-[#EADFD5] bg-white text-sm text-[#231710] focus:outline-amber-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#7A6355] mb-1.5">
+                Password
+              </label>
+              <input
+                type="password"
+                required
+                placeholder="••••••••"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-[#EADFD5] bg-white text-sm text-[#231710] focus:outline-amber-600"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loggingIn}
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3.5 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm"
+            >
+              <Lock className="w-4 h-4" />
+              {loggingIn ? 'Memverifikasi...' : 'Masuk ke Sistem'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ================= APLIKASI UTAMA (SETELAH LOGIN) =================
   return (
     <div className="min-h-screen bg-[#FAF6F1] text-[#2C1E16] flex flex-col md:flex-row font-sans">
       {/* Sidebar Navigasi */}
@@ -340,25 +470,55 @@ const [newBahan, setNewBahan] = useState({
           </nav>
         </div>
 
-        <div className="mt-8 pt-4 border-t border-[#3D291E] text-xs text-[#A69281] space-y-2">
-          <div className="flex items-center justify-between">
-            <span>Status Database</span>
-            <span className="inline-flex items-center gap-1 text-emerald-400 font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Terhubung
-            </span>
+        {/* Info Akun & Hak Akses */}
+        <div className="mt-8 pt-4 border-t border-[#3D291E] text-xs text-[#A69281] space-y-3">
+          <div className="p-3 rounded-xl bg-[#2E1E15] border border-[#3D291E] space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-white font-bold">{user.username}</span>
+              {isAdmin ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                  <ShieldCheck className="w-3 h-3" /> FULL ADMIN
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+                  <Eye className="w-3 h-3" /> VIEW ONLY
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-[#A69281]">
+              {isAdmin ? 'Akses penuh tambah, edit & hapus data' : 'Mode baca saja (tidak dapat ubah data)'}
+            </p>
           </div>
-          <button
-            onClick={fetchAllData}
-            className="w-full mt-2 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#332218] hover:bg-[#422C20] text-amber-200 transition"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Sinkronkan Data
-          </button>
+
+          <div className="flex gap-2">
+            <button
+              onClick={fetchAllData}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-[#332218] hover:bg-[#422C20] text-amber-200 transition"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Sync
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-200 transition"
+              title="Keluar"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Keluar
+            </button>
+          </div>
         </div>
       </aside>
 
       {/* Konten Utama */}
       <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
+        {!isAdmin && (
+          <div className="mb-6 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-2.5 text-xs font-medium">
+            <Eye className="w-4 h-4 text-amber-600 shrink-0" />
+            Anda login menggunakan akun <strong>View-Only ({user.username})</strong>. Anda dapat memantau seluruh kalkulasi HPP, menu, dan BEP, namun fitur penambahan/perubahan data dinonaktifkan.
+          </div>
+        )}
+
         {errorMsg && (
           <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 flex items-center gap-3">
             <AlertCircle className="w-5 h-5 shrink-0" />
@@ -377,7 +537,6 @@ const [newBahan, setNewBahan] = useState({
               <p className="text-sm text-[#7A6355]">Analisis harga jual menu, beban operasional harian, dan titik impas (BEP).</p>
             </div>
 
-            {/* Bento Grid KPI */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white p-5 rounded-2xl border border-[#EADFD5] shadow-sm">
                 <div className="flex items-center justify-between text-[#7A6355] mb-2">
@@ -416,7 +575,6 @@ const [newBahan, setNewBahan] = useState({
               </div>
             </div>
 
-            {/* Simulator BEP & Grafik Perbandingan */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-[#EADFD5] shadow-sm space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -468,7 +626,6 @@ const [newBahan, setNewBahan] = useState({
                 </div>
               </div>
 
-              {/* Perbandingan HPP vs Harga Jual */}
               <div className="bg-white p-6 rounded-2xl border border-[#EADFD5] shadow-sm space-y-4">
                 <h3 className="font-bold text-lg text-[#231710]">HPP vs Harga Jual</h3>
                 <div className="space-y-4">
@@ -504,84 +661,86 @@ const [newBahan, setNewBahan] = useState({
               <p className="text-sm text-[#7A6355]">Setiap bahan baku memiliki Random Key ID unik dan menghitung harga per satuan secara otomatis.</p>
             </div>
 
-            <form onSubmit={handleSaveBahan} className="bg-white p-6 rounded-2xl border border-[#EADFD5] shadow-sm grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-              <div>
-                <label className="block text-xs font-semibold text-[#7A6355] mb-1">Random Key ID</label>
-                <input
-                  type="text"
-                  readOnly
-                  value={editingBahanId || newBahan.id}
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#FAF6F1] border border-[#EADFD5] text-xs font-mono font-bold text-amber-800"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-[#7A6355] mb-1">Nama Bahan Baku</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: Susu UHT Full Cream"
-                  value={newBahan.nama_bahan}
-                  onChange={(e) => setNewBahan({ ...newBahan, nama_bahan: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-[#EADFD5] text-sm focus:outline-amber-600"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[#7A6355] mb-1">Ukuran Kemasan</label>
-                <div className="flex gap-1">
+            {isAdmin && (
+              <form onSubmit={handleSaveBahan} className="bg-white p-6 rounded-2xl border border-[#EADFD5] shadow-sm grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                <div>
+                  <label className="block text-xs font-semibold text-[#7A6355] mb-1">Random Key ID</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={editingBahanId || newBahan.id}
+                    className="w-full px-3 py-2.5 rounded-xl bg-[#FAF6F1] border border-[#EADFD5] text-xs font-mono font-bold text-amber-800"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-[#7A6355] mb-1">Nama Bahan Baku</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Susu UHT Full Cream"
+                    value={newBahan.nama_bahan}
+                    onChange={(e) => setNewBahan({ ...newBahan, nama_bahan: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-[#EADFD5] text-sm focus:outline-amber-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#7A6355] mb-1">Ukuran Kemasan</label>
+                  <div className="flex gap-1">
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      placeholder="1000"
+                      value={newBahan.ukuran_kemasan}
+                      onChange={(e) => setNewBahan({ ...newBahan, ukuran_kemasan: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
+                    />
+                    <select
+                      value={newBahan.satuan}
+                      onChange={(e) => setNewBahan({ ...newBahan, satuan: e.target.value })}
+                      className="px-2 py-2 rounded-xl border border-[#EADFD5] text-sm bg-white"
+                    >
+                      <option value="gr">gr</option>
+                      <option value="ml">ml</option>
+                      <option value="Pcs">Pcs</option>
+                      <option value="cup">cup</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#7A6355] mb-1">Harga Beli (Rp)</label>
                   <input
                     type="number"
-                    step="any"
                     required
-                    placeholder="1000"
-                    value={newBahan.ukuran_kemasan}
-                    onChange={(e) => setNewBahan({ ...newBahan, ukuran_kemasan: e.target.value })}
+                    placeholder="25000"
+                    value={newBahan.harga_beli}
+                    onChange={(e) => setNewBahan({ ...newBahan, harga_beli: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
                   />
-                  <select
-                    value={newBahan.satuan}
-                    onChange={(e) => setNewBahan({ ...newBahan, satuan: e.target.value })}
-                    className="px-2 py-2 rounded-xl border border-[#EADFD5] text-sm bg-white"
-                  >
-                    <option value="gr">gr</option>
-                    <option value="ml">ml</option>
-                    <option value="Pcs">Pcs</option>
-                    <option value="cup">cup</option>
-                  </select>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[#7A6355] mb-1">Harga Beli (Rp)</label>
-                <input
-                  type="number"
-                  required
-                  placeholder="25000"
-                  value={newBahan.harga_beli}
-                  onChange={(e) => setNewBahan({ ...newBahan, harga_beli: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-1.5 transition"
-                >
-                  <Plus className="w-4 h-4" /> {editingBahanId ? 'Update' : 'Simpan'}
-                </button>
-                {editingBahanId && (
+                <div className="flex gap-2">
                   <button
-                    type="button"
-                    onClick={() => {
-                      setEditingBahanId(null);
-                      setNewBahan({ id: generateRandomBahanId(), nama_bahan: '', ukuran_kemasan: '', satuan: 'gr', harga_beli: '' });
-                    }}
-                    className="px-3 py-2.5 rounded-xl bg-gray-200 text-gray-700 text-sm"
+                    type="submit"
+                    disabled={saving}
+                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-1.5 transition"
                   >
-                    Batal
+                    <Plus className="w-4 h-4" /> {editingBahanId ? 'Update' : 'Simpan'}
                   </button>
-                )}
-              </div>
-            </form>
+                  {editingBahanId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingBahanId(null);
+                        setNewBahan({ id: generateRandomBahanId(), nama_bahan: '', ukuran_kemasan: '', satuan: 'gr', harga_beli: '' });
+                      }}
+                      className="px-3 py-2.5 rounded-xl bg-gray-200 text-gray-700 text-sm"
+                    >
+                      Batal
+                    </button>
+                  )}
+                </div>
+              </form>
+            )}
 
             <div className="bg-white rounded-2xl border border-[#EADFD5] shadow-sm overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -592,7 +751,7 @@ const [newBahan, setNewBahan] = useState({
                     <th className="p-4">Kemasan</th>
                     <th className="p-4">Harga Beli</th>
                     <th className="p-4">Harga / Satuan</th>
-                    <th className="p-4 text-right">Aksi</th>
+                    {isAdmin && <th className="p-4 text-right">Aksi</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#EADFD5] text-sm">
@@ -607,31 +766,33 @@ const [newBahan, setNewBahan] = useState({
                         <td className="p-4 font-semibold text-emerald-700">
                           {formatRupiah(unitPrice)} / {b.satuan}
                         </td>
-                        <td className="p-4 text-right space-x-2">
-                          <button
-                            onClick={() => {
-                              setEditingBahanId(b.id);
-                              setNewBahan({
-                                id: b.id,
-                                nama_bahan: b.nama_bahan,
-                                ukuran_kemasan: String(b.ukuran_kemasan),
-                                satuan: b.satuan,
-                                harga_beli: String(b.harga_beli),
-                              });
-                            }}
-                            className="p-2 rounded-lg text-amber-700 hover:bg-amber-50"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (confirm(`Hapus bahan ${b.nama_bahan}?`)) sendAction('DELETE_BAHAN', { id: b.id });
-                            }}
-                            className="p-2 rounded-lg text-rose-600 hover:bg-rose-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
+                        {isAdmin && (
+                          <td className="p-4 text-right space-x-2">
+                            <button
+                              onClick={() => {
+                                setEditingBahanId(b.id);
+                                setNewBahan({
+                                  id: b.id,
+                                  nama_bahan: b.nama_bahan,
+                                  ukuran_kemasan: String(b.ukuran_kemasan),
+                                  satuan: b.satuan,
+                                  harga_beli: String(b.harga_beli),
+                                });
+                              }}
+                              className="p-2 rounded-lg text-amber-700 hover:bg-amber-50"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Hapus bahan ${b.nama_bahan}?`)) sendAction('DELETE_BAHAN', { id: b.id });
+                              }}
+                              className="p-2 rounded-lg text-rose-600 hover:bg-rose-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -646,7 +807,11 @@ const [newBahan, setNewBahan] = useState({
           <div className="space-y-8">
             <div>
               <h2 className="text-2xl font-bold text-[#231710]">Manajemen Menu & Racikan HPP</h2>
-              <p className="text-sm text-[#7A6355]">Layer 1 menampilkan daftar menu tersimpan di database; Layer 2 untuk meracik dan mengelola menu.</p>
+              <p className="text-sm text-[#7A6355]">
+                {isAdmin
+                  ? 'Layer 1 menampilkan daftar menu tersimpan di database; Layer 2 untuk meracik dan mengelola menu.'
+                  : 'Daftar seluruh menu beserta komposisi HPP dan margin keuntungan kedai.'}
+              </p>
             </div>
 
             {/* LAYER 1: LIST MENU TERSIMPAN DI DATABASE */}
@@ -667,7 +832,7 @@ const [newBahan, setNewBahan] = useState({
                       <th className="p-4">Total HPP</th>
                       <th className="p-4">Harga Jual</th>
                       <th className="p-4">Profit & Margin</th>
-                      <th className="p-4 text-right">Aksi</th>
+                      {isAdmin && <th className="p-4 text-right">Aksi</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EADFD5] text-sm">
@@ -697,22 +862,24 @@ const [newBahan, setNewBahan] = useState({
                             Margin {m.marginPct.toFixed(2)}% dari HPP
                           </span>
                         </td>
-                        <td className="p-4 text-right space-x-2 whitespace-nowrap">
-                          <button
-                            onClick={() => startEditMenu(m)}
-                            className="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-semibold inline-flex items-center gap-1"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" /> Edit
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (confirm(`Hapus menu ${m.nama_produk}?`)) sendAction('DELETE_MENU', { id: m.id });
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold inline-flex items-center gap-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" /> Hapus
-                          </button>
-                        </td>
+                        {isAdmin && (
+                          <td className="p-4 text-right space-x-2 whitespace-nowrap">
+                            <button
+                              onClick={() => startEditMenu(m)}
+                              className="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-semibold inline-flex items-center gap-1"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" /> Edit
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Hapus menu ${m.nama_produk}?`)) sendAction('DELETE_MENU', { id: m.id });
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold inline-flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Hapus
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -720,226 +887,223 @@ const [newBahan, setNewBahan] = useState({
               </div>
             </section>
 
-            {/* LAYER 2: CRUD MENU (NAMA -> BAHAN & PROGRESS HPP -> HARGA JUAL -> OTOMATIS MARGIN %) */}
-            <section id="layer-crud-menu" className="bg-white rounded-2xl border border-[#EADFD5] shadow-sm p-6 space-y-6">
-              <div className="flex items-center justify-between border-b border-[#EADFD5] pb-4">
-                <div>
-                  <span className="text-[11px] uppercase tracking-wider text-amber-600 font-bold">Layer 2 • Form CRUD Menu</span>
-                  <h3 className="font-bold text-xl text-[#231710]">
-                    {editingMenuId ? `Edit Menu: ${menuForm.nama_produk}` : 'Tambah Menu & Racikan Baru'}
-                  </h3>
-                </div>
-                {editingMenuId && (
-                  <button
-                    onClick={() => {
-                      setEditingMenuId(null);
-                      setMenuForm({ nama_produk: '', harga_jual: '', resep: [] });
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-semibold flex items-center gap-1"
-                  >
-                    <X className="w-4 h-4" /> Batal Edit
-                  </button>
-                )}
-              </div>
-
-              <form onSubmit={handleSaveMenu} className="space-y-6">
-                {/* Step 1: Nama Produk */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-[#7A6355] mb-2">
-                    1. Nama Produk / Menu
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Kopi Susu Gula Aren"
-                    value={menuForm.nama_produk}
-                    onChange={(e) => setMenuForm({ ...menuForm, nama_produk: e.target.value })}
-                    className="w-full md:w-1/2 px-4 py-3 rounded-xl border border-[#EADFD5] text-sm font-semibold focus:outline-amber-600"
-                  />
-                </div>
-
-                {/* Step 2: Pilih Komposisi Bahan & Progress Subtotal HPP */}
-                <div className="p-5 rounded-2xl bg-[#FAF6F1] border border-[#EADFD5] space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-[#7A6355]">
-                      2. Komposisi Bahan Baku & Akumulasi HPP
-                    </label>
-                    <div className="px-4 py-1.5 rounded-xl bg-amber-900 text-amber-100 text-xs font-bold">
-                      Subtotal HPP Terkini: {formatRupiah(draftMenuCalc.subtotalHpp)}
-                    </div>
+            {/* LAYER 2: CRUD MENU (KHUSUS FULL ADMIN) */}
+            {isAdmin && (
+              <section id="layer-crud-menu" className="bg-white rounded-2xl border border-[#EADFD5] shadow-sm p-6 space-y-6">
+                <div className="flex items-center justify-between border-b border-[#EADFD5] pb-4">
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-amber-600 font-bold">Layer 2 • Form CRUD Menu</span>
+                    <h3 className="font-bold text-xl text-[#231710]">
+                      {editingMenuId ? `Edit Menu: ${menuForm.nama_produk}` : 'Tambah Menu & Racikan Baru'}
+                    </h3>
                   </div>
-
-                  {/* Progress Bar Visual Subtotal HPP */}
-                  <div className="w-full h-2.5 bg-[#EADFD5] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-amber-500 to-amber-700 transition-all duration-300"
-                      style={{
-                        width: `${
-                          draftMenuCalc.hargaJualNum > 0
-                            ? Math.min(100, (draftMenuCalc.subtotalHpp / draftMenuCalc.hargaJualNum) * 100)
-                            : menuForm.resep.length > 0
-                            ? Math.min(100, menuForm.resep.length * 20)
-                            : 0
-                        }%`,
-                      }}
-                    />
-                  </div>
-
-                  {/* Input Tambah Bahan ke Resep */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <select
-                      value={selectedBahanInput}
-                      onChange={(e) => setSelectedBahanInput(e.target.value)}
-                      className="md:col-span-2 px-3 py-2.5 rounded-xl border border-[#EADFD5] bg-white text-sm"
-                    >
-                      <option value="">-- Pilih Bahan Baku --</option>
-                      {bahanBaku.map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.nama_bahan} ({formatRupiah(Number(b.harga_beli) / Number(b.ukuran_kemasan))}/{b.satuan})
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      step="any"
-                      placeholder="Takaran (gr / ml / pcs)"
-                      value={jumlahPemakaianInput}
-                      onChange={(e) => setJumlahPemakaianInput(e.target.value)}
-                      className="px-3 py-2.5 rounded-xl border border-[#EADFD5] bg-white text-sm"
-                    />
+                  {editingMenuId && (
                     <button
-                      type="button"
-                      onClick={handleAddBahanToDraft}
-                      className="bg-[#231710] hover:bg-[#3A271C] text-white font-semibold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-1.5"
+                      onClick={() => {
+                        setEditingMenuId(null);
+                        setMenuForm({ nama_produk: '', harga_jual: '', resep: [] });
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-semibold flex items-center gap-1"
                     >
-                      <Plus className="w-4 h-4" /> Tambah Bahan
+                      <X className="w-4 h-4" /> Batal Edit
                     </button>
-                  </div>
-
-                  {/* Daftar Bahan Terpilih */}
-                  {menuForm.resep.length > 0 && (
-                    <div className="divide-y divide-[#EADFD5] bg-white rounded-xl border border-[#EADFD5] px-4">
-                      {menuForm.resep.map((item, idx) => {
-                        const b = bahanMap[item.bahan_baku_id];
-                        const cost = b ? Number(item.jumlah_pemakaian) * b.harga_per_unit : 0;
-                        return (
-                          <div key={idx} className="py-3 flex items-center justify-between text-sm">
-                            <div>
-                              <span className="font-semibold">{b ? b.nama_bahan : item.bahan_baku_id}</span>
-                              <span className="text-xs text-[#7A6355] ml-2">
-                                ({item.jumlah_pemakaian} {item.satuan_pemakaian})
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <span className="font-semibold text-amber-800">{formatRupiah(cost)}</span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setMenuForm({
-                                    ...menuForm,
-                                    resep: menuForm.resep.filter((_, i) => i !== idx),
-                                  })
-                                }
-                                className="text-rose-600 hover:text-rose-800"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
                   )}
                 </div>
 
-                {/* Step 3: Input Harga Jual & Otomatis Kalkulasi Persentase Margin dari HPP */}
-                <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-amber-50/40 border border-emerald-200 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                <form onSubmit={handleSaveMenu} className="space-y-6">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-emerald-900 mb-2">
-                      3. Tentukan Harga Jual (Rp)
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#7A6355] mb-2">
+                      1. Nama Produk / Menu
                     </label>
                     <input
-                      type="number"
+                      type="text"
                       required
-                      placeholder="Contoh: 15000"
-                      value={menuForm.harga_jual}
-                      onChange={(e) => setMenuForm({ ...menuForm, harga_jual: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-emerald-300 bg-white text-base font-bold text-[#231710] focus:outline-emerald-600"
+                      placeholder="Contoh: Kopi Susu Gula Aren"
+                      value={menuForm.nama_produk}
+                      onChange={(e) => setMenuForm({ ...menuForm, nama_produk: e.target.value })}
+                      className="w-full md:w-1/2 px-4 py-3 rounded-xl border border-[#EADFD5] text-sm font-semibold focus:outline-amber-600"
                     />
                   </div>
 
-                  <div className="bg-white p-4 rounded-xl border border-emerald-200">
-                    <p className="text-xs text-[#7A6355]">Profit Kotor per Cup</p>
-                    <p className={`text-xl font-bold mt-0.5 ${draftMenuCalc.profit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
-                      {formatRupiah(draftMenuCalc.profit)}
-                    </p>
-                    <p className="text-[11px] text-[#7A6355] mt-0.5">
-                      Harga Jual - Total HPP ({formatRupiah(draftMenuCalc.subtotalHpp)})
-                    </p>
+                  <div className="p-5 rounded-2xl bg-[#FAF6F1] border border-[#EADFD5] space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#7A6355]">
+                        2. Komposisi Bahan Baku & Akumulasi HPP
+                      </label>
+                      <div className="px-4 py-1.5 rounded-xl bg-amber-900 text-amber-100 text-xs font-bold">
+                        Subtotal HPP Terkini: {formatRupiah(draftMenuCalc.subtotalHpp)}
+                      </div>
+                    </div>
+
+                    <div className="w-full h-2.5 bg-[#EADFD5] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-500 to-amber-700 transition-all duration-300"
+                        style={{
+                          width: `${
+                            draftMenuCalc.hargaJualNum > 0
+                              ? Math.min(100, (draftMenuCalc.subtotalHpp / draftMenuCalc.hargaJualNum) * 100)
+                              : menuForm.resep.length > 0
+                              ? Math.min(100, menuForm.resep.length * 20)
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <select
+                        value={selectedBahanInput}
+                        onChange={(e) => setSelectedBahanInput(e.target.value)}
+                        className="md:col-span-2 px-3 py-2.5 rounded-xl border border-[#EADFD5] bg-white text-sm"
+                      >
+                        <option value="">-- Pilih Bahan Baku --</option>
+                        {bahanBaku.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.nama_bahan} ({formatRupiah(Number(b.harga_beli) / Number(b.ukuran_kemasan))}/{b.satuan})
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="Takaran (gr / ml / pcs)"
+                        value={jumlahPemakaianInput}
+                        onChange={(e) => setJumlahPemakaianInput(e.target.value)}
+                        className="px-3 py-2.5 rounded-xl border border-[#EADFD5] bg-white text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddBahanToDraft}
+                        className="bg-[#231710] hover:bg-[#3A271C] text-white font-semibold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-1.5"
+                      >
+                        <Plus className="w-4 h-4" /> Tambah Bahan
+                      </button>
+                    </div>
+
+                    {menuForm.resep.length > 0 && (
+                      <div className="divide-y divide-[#EADFD5] bg-white rounded-xl border border-[#EADFD5] px-4">
+                        {menuForm.resep.map((item, idx) => {
+                          const b = bahanMap[item.bahan_baku_id];
+                          const cost = b ? Number(item.jumlah_pemakaian) * b.harga_per_unit : 0;
+                          return (
+                            <div key={idx} className="py-3 flex items-center justify-between text-sm">
+                              <div>
+                                <span className="font-semibold">{b ? b.nama_bahan : item.bahan_baku_id}</span>
+                                <span className="text-xs text-[#7A6355] ml-2">
+                                  ({item.jumlah_pemakaian} {item.satuan_pemakaian})
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <span className="font-semibold text-amber-800">{formatRupiah(cost)}</span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setMenuForm({
+                                      ...menuForm,
+                                      resep: menuForm.resep.filter((_, i) => i !== idx),
+                                    })
+                                  }
+                                  className="text-rose-600 hover:text-rose-800"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="bg-emerald-700 text-white p-4 rounded-xl shadow-sm">
-                    <p className="text-xs text-emerald-100">Persentase Margin dari HPP</p>
-                    <p className="text-2xl font-extrabold mt-0.5">
-                      {draftMenuCalc.marginFromHpp >= 0 ? '+' : ''}
-                      {draftMenuCalc.marginFromHpp.toFixed(2)}%
-                    </p>
-                    <p className="text-[11px] text-emerald-200 mt-0.5">Otomatis dihitung dari modal HPP</p>
-                  </div>
-                </div>
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-amber-50/40 border border-emerald-200 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-emerald-900 mb-2">
+                        3. Tentukan Harga Jual (Rp)
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        placeholder="Contoh: 15000"
+                        value={menuForm.harga_jual}
+                        onChange={(e) => setMenuForm({ ...menuForm, harga_jual: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border border-emerald-300 bg-white text-base font-bold text-[#231710] focus:outline-emerald-600"
+                      />
+                    </div>
 
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-8 rounded-xl shadow-md flex items-center gap-2 transition"
-                  >
-                    <Check className="w-5 h-5" />
-                    {editingMenuId ? 'Simpan Perubahan Menu' : 'Simpan Menu ke Database'}
-                  </button>
-                </div>
-              </form>
-            </section>
+                    <div className="bg-white p-4 rounded-xl border border-emerald-200">
+                      <p className="text-xs text-[#7A6355]">Profit Kotor per Cup</p>
+                      <p className={`text-xl font-bold mt-0.5 ${draftMenuCalc.profit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                        {formatRupiah(draftMenuCalc.profit)}
+                      </p>
+                      <p className="text-[11px] text-[#7A6355] mt-0.5">
+                        Harga Jual - Total HPP ({formatRupiah(draftMenuCalc.subtotalHpp)})
+                      </p>
+                    </div>
+
+                    <div className="bg-emerald-700 text-white p-4 rounded-xl shadow-sm">
+                      <p className="text-xs text-emerald-100">Persentase Margin dari HPP</p>
+                      <p className="text-2xl font-extrabold mt-0.5">
+                        {draftMenuCalc.marginFromHpp >= 0 ? '+' : ''}
+                        {draftMenuCalc.marginFromHpp.toFixed(2)}%
+                      </p>
+                      <p className="text-[11px] text-emerald-200 mt-0.5">Otomatis dihitung dari modal HPP</p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-8 rounded-xl shadow-md flex items-center gap-2 transition"
+                    >
+                      <Check className="w-5 h-5" />
+                      {editingMenuId ? 'Simpan Perubahan Menu' : 'Simpan Menu ke Database'}
+                    </button>
+                  </div>
+                </form>
+              </section>
+            )}
           </div>
         )}
 
         {/* ================= TAB 4: OPERASIONAL & INVENTARIS ================= */}
         {activeTab === 'operasional' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Biaya Operasional */}
             <div className="bg-white p-6 rounded-2xl border border-[#EADFD5] shadow-sm space-y-4">
               <h3 className="font-bold text-lg text-[#231710]">Biaya Operasional Bulanan</h3>
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const ok = await sendAction('ADD_OPERASIONAL', {
-                    ...newOps,
-                    biaya_bulanan: Number(newOps.biaya_bulanan),
-                  });
-                  if (ok) setNewOps({ nama_kebutuhan: '', periode: '1 Bulan', biaya_bulanan: '', catatan: '' });
-                }}
-                className="grid grid-cols-1 sm:grid-cols-3 gap-2"
-              >
-                <input
-                  type="text"
-                  required
-                  placeholder="Nama kebutuhan"
-                  value={newOps.nama_kebutuhan}
-                  onChange={(e) => setNewOps({ ...newOps, nama_kebutuhan: e.target.value })}
-                  className="px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
-                />
-                <input
-                  type="number"
-                  required
-                  placeholder="Biaya/bulan (Rp)"
-                  value={newOps.biaya_bulanan}
-                  onChange={(e) => setNewOps({ ...newOps, biaya_bulanan: e.target.value })}
-                  className="px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
-                />
-                <button type="submit" className="bg-amber-600 text-white rounded-xl text-sm font-semibold py-2">
-                  + Tambah
-                </button>
-              </form>
+              {isAdmin && (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const ok = await sendAction('ADD_OPERASIONAL', {
+                      ...newOps,
+                      biaya_bulanan: Number(newOps.biaya_bulanan),
+                    });
+                    if (ok) setNewOps({ nama_kebutuhan: '', periode: '1 Bulan', biaya_bulanan: '', catatan: '' });
+                  }}
+                  className="grid grid-cols-1 sm:grid-cols-3 gap-2"
+                >
+                  <input
+                    type="text"
+                    required
+                    placeholder="Nama kebutuhan"
+                    value={newOps.nama_kebutuhan}
+                    onChange={(e) => setNewOps({ ...newOps, nama_kebutuhan: e.target.value })}
+                    className="px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
+                  />
+                  <input
+                    type="number"
+                    required
+                    placeholder="Biaya/bulan (Rp)"
+                    value={newOps.biaya_bulanan}
+                    onChange={(e) => setNewOps({ ...newOps, biaya_bulanan: e.target.value })}
+                    className="px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
+                  />
+                  <button type="submit" className="bg-amber-600 text-white rounded-xl text-sm font-semibold py-2">
+                    + Tambah
+                  </button>
+                </form>
+              )}
 
               <div className="divide-y divide-[#EADFD5]">
                 {operasional.map((o) => (
@@ -950,52 +1114,55 @@ const [newBahan, setNewBahan] = useState({
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="font-bold">{formatRupiah(o.biaya_bulanan)}</span>
-                      <button
-                        onClick={() => sendAction('DELETE_OPERASIONAL', { id: o.id })}
-                        className="text-rose-600 hover:text-rose-800"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => sendAction('DELETE_OPERASIONAL', { id: o.id })}
+                          className="text-rose-600 hover:text-rose-800"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Inventaris Awal */}
             <div className="bg-white p-6 rounded-2xl border border-[#EADFD5] shadow-sm space-y-4">
               <h3 className="font-bold text-lg text-[#231710]">Inventaris & Aset Awal</h3>
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const ok = await sendAction('ADD_INVENTARIS', {
-                    ...newInv,
-                    harga_barang: Number(newInv.harga_barang),
-                  });
-                  if (ok) setNewInv({ nama_barang: '', kondisi: 'Baru', harga_barang: '', status_kebutuhan: 'Terpenuhi' });
-                }}
-                className="grid grid-cols-1 sm:grid-cols-4 gap-2"
-              >
-                <input
-                  type="text"
-                  required
-                  placeholder="Nama barang"
-                  value={newInv.nama_barang}
-                  onChange={(e) => setNewInv({ ...newInv, nama_barang: e.target.value })}
-                  className="sm:col-span-2 px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
-                />
-                <input
-                  type="number"
-                  required
-                  placeholder="Harga (Rp)"
-                  value={newInv.harga_barang}
-                  onChange={(e) => setNewInv({ ...newInv, harga_barang: e.target.value })}
-                  className="px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
-                />
-                <button type="submit" className="bg-amber-600 text-white rounded-xl text-sm font-semibold py-2">
-                  + Tambah
-                </button>
-              </form>
+              {isAdmin && (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const ok = await sendAction('ADD_INVENTARIS', {
+                      ...newInv,
+                      harga_barang: Number(newInv.harga_barang),
+                    });
+                    if (ok) setNewInv({ nama_barang: '', kondisi: 'Baru', harga_barang: '', status_kebutuhan: 'Terpenuhi' });
+                  }}
+                  className="grid grid-cols-1 sm:grid-cols-4 gap-2"
+                >
+                  <input
+                    type="text"
+                    required
+                    placeholder="Nama barang"
+                    value={newInv.nama_barang}
+                    onChange={(e) => setNewInv({ ...newInv, nama_barang: e.target.value })}
+                    className="sm:col-span-2 px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
+                  />
+                  <input
+                    type="number"
+                    required
+                    placeholder="Harga (Rp)"
+                    value={newInv.harga_barang}
+                    onChange={(e) => setNewInv({ ...newInv, harga_barang: e.target.value })}
+                    className="px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
+                  />
+                  <button type="submit" className="bg-amber-600 text-white rounded-xl text-sm font-semibold py-2">
+                    + Tambah
+                  </button>
+                </form>
+              )}
 
               <div className="divide-y divide-[#EADFD5]">
                 {inventaris.map((inv) => (
@@ -1006,27 +1173,41 @@ const [newBahan, setNewBahan] = useState({
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="font-bold">{formatRupiah(inv.harga_barang)}</span>
-                      <button
-                        onClick={() =>
-                          sendAction('TOGGLE_INVENTARIS', {
-                            id: inv.id,
-                            status_kebutuhan: inv.status_kebutuhan === 'Terpenuhi' ? 'Belum Terpenuhi' : 'Terpenuhi',
-                          })
-                        }
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                          inv.status_kebutuhan === 'Terpenuhi'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        {inv.status_kebutuhan}
-                      </button>
-                      <button
-                        onClick={() => sendAction('DELETE_INVENTARIS', { id: inv.id })}
-                        className="text-rose-600 hover:text-rose-800"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {isAdmin ? (
+                        <button
+                          onClick={() =>
+                            sendAction('TOGGLE_INVENTARIS', {
+                              id: inv.id,
+                              status_kebutuhan: inv.status_kebutuhan === 'Terpenuhi' ? 'Belum Terpenuhi' : 'Terpenuhi',
+                            })
+                          }
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                            inv.status_kebutuhan === 'Terpenuhi'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {inv.status_kebutuhan}
+                        </button>
+                      ) : (
+                        <span
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                            inv.status_kebutuhan === 'Terpenuhi'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {inv.status_kebutuhan}
+                        </span>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => sendAction('DELETE_INVENTARIS', { id: inv.id })}
+                          className="text-rose-600 hover:text-rose-800"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
