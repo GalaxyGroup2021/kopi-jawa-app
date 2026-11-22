@@ -20,7 +20,6 @@ import {
   Eye,
   ShieldCheck,
   ChevronDown,
-  ChevronUp,
   Loader2,
   CheckCircle2,
   Percent,
@@ -134,6 +133,14 @@ export default function SmaraKopiApp() {
   const [resepDetail, setResepDetail] = useState([]);
   const [operasional, setOperasional] = useState([]);
   const [inventaris, setInventaris] = useState([]);
+
+  // Dropdown State untuk Bahan Baku & Menu
+  const [expandedBahanIds, setExpandedBahanIds] = useState([]);
+  const toggleBahanDropdown = (id) => {
+    setExpandedBahanIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
 
   const [expandedMenuIds, setExpandedMenuIds] = useState([]);
   const toggleMenuDropdown = (id) => {
@@ -443,7 +450,7 @@ export default function SmaraKopiApp() {
   if (authChecking) {
     return (
       <div className="min-h-screen smara-bg flex items-center justify-center text-sky-100 p-4">
-        <div className="smara-glass px-7 py-5 rounded-2xl flex items-center gap-3 text-sm font-medium">
+        <div className="smara-glass px-7 py-5 rounded-2xl flex items-center gap-3 text-sm font-medium smara-animate-tab">
           <Loader2 className="w-5 h-5 animate-spin text-sky-300" />
           Memeriksa sesi keamanan SMARA KOPI...
         </div>
@@ -454,7 +461,7 @@ export default function SmaraKopiApp() {
   if (!user) {
     return (
       <div className="min-h-screen smara-bg flex items-center justify-center p-4 font-sans">
-        <div className="w-full max-w-md smara-glass rounded-3xl overflow-hidden">
+        <div className="w-full max-w-md smara-glass rounded-3xl overflow-hidden smara-animate-tab">
           <div className="p-8 pb-6 text-center border-b border-white/15 bg-white/5 space-y-2">
             <SmaraLogo size="lg" />
             <p className="text-xs text-sky-200/80 flex items-center justify-center gap-1.5 pt-2">
@@ -502,7 +509,7 @@ export default function SmaraKopiApp() {
             <button
               type="submit"
               disabled={loggingIn}
-              className="w-full bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 disabled:opacity-60 text-[#041226] font-bold py-3.5 rounded-xl shadow-lg shadow-sky-900/40 transition flex items-center justify-center gap-2 text-sm cursor-pointer"
+              className="w-full bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 active:scale-[0.99] disabled:opacity-60 text-[#041226] font-bold py-3.5 rounded-xl shadow-lg shadow-sky-900/40 transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
               {loggingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
               {loggingIn ? 'Memverifikasi...' : 'Masuk ke SMARA KOPI'}
@@ -515,9 +522,10 @@ export default function SmaraKopiApp() {
 
   return (
     <div className="min-h-screen smara-bg text-slate-100 font-sans relative pb-10">
+      {/* OVERLAY LOADING CRUD */}
       {saving && (
-        <div className="fixed inset-0 z-50 bg-[#041226]/65 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="smara-glass px-8 py-6 rounded-3xl flex flex-col items-center gap-3.5 max-w-sm w-full text-center">
+        <div className="fixed inset-0 z-50 bg-[#041226]/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="smara-glass px-8 py-6 rounded-3xl flex flex-col items-center gap-3.5 max-w-sm w-full text-center smara-animate-tab">
             <div className="w-12 h-12 rounded-2xl bg-sky-400/20 border border-sky-300/40 flex items-center justify-center">
               <Loader2 className="w-6 h-6 text-sky-300 animate-spin" />
             </div>
@@ -529,13 +537,14 @@ export default function SmaraKopiApp() {
         </div>
       )}
 
+      {/* NOTIFIKASI GLASS TOAST */}
       {toast && (
-        <div className="fixed top-5 right-5 z-50 max-w-md w-[calc(100%-2.5rem)] animate-in fade-in slide-in-from-top-3 duration-200">
+        <div className="fixed top-5 right-5 z-50 max-w-md w-[calc(100%-2.5rem)] smara-animate-tab">
           <div
             className={`smara-glass rounded-2xl p-4 flex items-start gap-3 shadow-2xl border ${
               toast.type === 'error'
-                ? 'border-rose-400/50 bg-rose-950/75 text-rose-50'
-                : 'border-emerald-400/50 bg-emerald-950/75 text-emerald-50'
+                ? 'border-rose-400/60 bg-rose-950/90 text-rose-50'
+                : 'border-emerald-400/60 bg-emerald-950/90 text-emerald-50'
             }`}
           >
             {toast.type === 'error' ? (
@@ -561,10 +570,10 @@ export default function SmaraKopiApp() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
         <header className="flex flex-col md:flex-row items-center gap-4 md:gap-8">
-          <div className="w-full md:w-64 flex justify-center md:justify-center shrink-0">
+          <div className="w-full md:w-64 flex justify-center shrink-0">
             <SmaraLogo size="md" />
           </div>
-          <div className="flex-1 text-center md:text-center">
+          <div className="flex-1 text-center">
             <h1 className="text-xl sm:text-2xl lg:text-[28px] font-light tracking-wide text-white leading-snug drop-shadow-sm">
               Aplikasi Penyimpanan / Gudang,
               <br className="hidden sm:block" /> Penghitungan HPP &amp; Operasional Usaha
@@ -573,8 +582,9 @@ export default function SmaraKopiApp() {
         </header>
 
         <div className="flex flex-col lg:flex-row gap-6 items-start">
+          {/* SIDEBAR NAVIGASI */}
           <aside className="w-full lg:w-64 shrink-0 smara-glass rounded-3xl p-5 flex flex-col justify-between lg:min-h-[540px]">
-            <nav className="space-y-2.5">
+            <nav className="grid grid-cols-2 lg:grid-cols-1 gap-2">
               {[
                 { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
                 { id: 'bahan', label: 'Bahan Baku', icon: Package },
@@ -587,34 +597,34 @@ export default function SmaraKopiApp() {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center justify-center lg:justify-start gap-3 px-5 py-3 rounded-full text-sm font-semibold transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-center lg:justify-start gap-2.5 px-4 py-3 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 active:scale-[0.98] cursor-pointer ${
                       active
                         ? 'smara-nav-active text-white'
-                        : 'text-sky-100/80 hover:bg-white/10 hover:text-white border border-transparent'
+                        : 'text-sky-100/85 hover:bg-white/10 hover:text-white border border-white/10 lg:border-transparent'
                     }`}
                   >
-                    <Icon className={`w-4 h-4 ${active ? 'text-sky-200' : 'text-sky-300/70'}`} />
-                    <span>{item.label}</span>
+                    <Icon className={`w-4 h-4 shrink-0 transition-transform duration-200 ${active ? 'text-sky-200 scale-110' : 'text-sky-300/75'}`} />
+                    <span className="truncate">{item.label}</span>
                   </button>
                 );
               })}
             </nav>
 
-            <div className="mt-8 pt-5 border-t border-white/15 space-y-3">
-              <div className="p-3.5 rounded-2xl bg-[#041226]/45 border border-white/15 space-y-1.5">
+            <div className="mt-5 lg:mt-8 pt-4 border-t border-white/15 space-y-3">
+              <div className="p-3.5 rounded-2xl smara-glass-soft space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-white font-bold text-xs truncate">{user.username}</span>
                   {isAdmin ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/30 text-emerald-200 text-[10px] font-bold shrink-0">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/35 text-emerald-200 text-[10px] font-bold shrink-0">
                       <ShieldCheck className="w-3 h-3" /> ADMIN
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-400/20 border border-sky-300/30 text-sky-200 text-[10px] font-bold shrink-0">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-400/20 border border-sky-300/35 text-sky-200 text-[10px] font-bold shrink-0">
                       <Eye className="w-3 h-3" /> VIEWER
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-sky-200/70 flex items-center gap-1.5">
+                <p className="text-[11px] text-sky-200/80 flex items-center gap-1.5">
                   <Database className="w-3 h-3 text-sky-300" /> TiDB Cloud Live
                 </p>
               </div>
@@ -623,14 +633,14 @@ export default function SmaraKopiApp() {
                 <button
                   onClick={fetchAllData}
                   disabled={loading}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-sky-100 text-xs font-semibold transition cursor-pointer disabled:opacity-60"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 active:scale-[0.98] border border-white/15 text-sky-100 text-xs font-semibold transition-all cursor-pointer disabled:opacity-60"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                   {loading ? 'Sync...' : 'Sync'}
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center justify-center gap-1.5 py-2.5 px-3.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 border border-rose-300/25 text-rose-100 text-xs font-semibold transition cursor-pointer"
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-3.5 rounded-xl bg-rose-500/25 hover:bg-rose-500/40 active:scale-[0.98] border border-rose-300/30 text-rose-100 text-xs font-semibold transition-all cursor-pointer"
                   title="Keluar"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -640,6 +650,7 @@ export default function SmaraKopiApp() {
             </div>
           </aside>
 
+          {/* KONTEN UTAMA KANAN */}
           <main className="flex-1 w-full min-w-0 space-y-5">
             {!isAdmin && (
               <div className="smara-glass-soft px-4 py-3 rounded-2xl text-sky-100 flex items-center gap-2.5 text-xs">
@@ -651,7 +662,7 @@ export default function SmaraKopiApp() {
             )}
 
             {errorMsg && (
-              <div className="smara-glass p-4 rounded-2xl border-rose-400/40 bg-rose-950/50 text-rose-100 flex items-center gap-3">
+              <div className="smara-glass p-4 rounded-2xl border-rose-400/40 bg-rose-950/60 text-rose-100 flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 text-rose-300 shrink-0" />
                 <div>
                   <p className="font-semibold text-sm">Koneksi Database Bermasalah</p>
@@ -660,10 +671,11 @@ export default function SmaraKopiApp() {
               </div>
             )}
 
+            {/* ================= TAB 1: DASHBOARD & BEP ================= */}
             {activeTab === 'dashboard' && (
-              <div className="space-y-5">
+              <div key="tab-dashboard" className="space-y-5 smara-animate-tab">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="smara-glass rounded-3xl p-5 flex flex-col justify-between min-h-[138px]">
+                  <div className="smara-glass rounded-3xl p-5 flex flex-col justify-between min-h-[132px] hover:-translate-y-0.5">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-semibold text-white/95">Harga rerata menu</span>
                       <Coffee className="w-4 h-4 text-sky-300" />
@@ -672,13 +684,13 @@ export default function SmaraKopiApp() {
                       <p className="text-2xl sm:text-[26px] font-bold text-white tracking-tight">
                         {formatRupiah(stats.avgHargaJual)}
                       </p>
-                      <p className="text-xs text-sky-200/80 mt-1">
+                      <p className="text-xs text-sky-200/85 mt-1">
                         Dari {menuEnriched.length} menu aktif di database
                       </p>
                     </div>
                   </div>
 
-                  <div className="smara-glass rounded-3xl p-5 flex flex-col justify-between min-h-[138px]">
+                  <div className="smara-glass rounded-3xl p-5 flex flex-col justify-between min-h-[132px] hover:-translate-y-0.5">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-semibold text-white/95">Biaya operasional</span>
                       <Receipt className="w-4 h-4 text-sky-300" />
@@ -687,13 +699,13 @@ export default function SmaraKopiApp() {
                       <p className="text-2xl sm:text-[26px] font-bold text-white tracking-tight">
                         {formatRupiah(stats.totalOpsBulanan)}
                       </p>
-                      <p className="text-xs text-sky-200/80 mt-1">
+                      <p className="text-xs text-sky-200/85 mt-1">
                         Harian: {formatRupiah(stats.totalOpsHarian)}/hari • Aset: {formatRupiah(stats.totalInventaris)}
                       </p>
                     </div>
                   </div>
 
-                  <div className="smara-glass rounded-3xl p-5 flex flex-col justify-between min-h-[138px]">
+                  <div className="smara-glass rounded-3xl p-5 flex flex-col justify-between min-h-[132px] hover:-translate-y-0.5">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-semibold text-white/95">Margin rerata</span>
                       <Percent className="w-4 h-4 text-emerald-300" />
@@ -702,7 +714,7 @@ export default function SmaraKopiApp() {
                       <p className="text-2xl sm:text-[26px] font-bold text-emerald-300 tracking-tight">
                         +{stats.avgMarginPct.toFixed(1)}%
                       </p>
-                      <p className="text-xs text-sky-200/80 mt-1">
+                      <p className="text-xs text-sky-200/85 mt-1">
                         Profit rerata: {formatRupiah(stats.avgProfitCup)} / cup
                       </p>
                     </div>
@@ -717,18 +729,18 @@ export default function SmaraKopiApp() {
                           Minimal BEP 1 hari :
                           <span className="text-sky-300">{stats.minCupBep} Cup</span>
                         </h2>
-                        <p className="text-xs font-semibold text-sky-100/90 mt-2">
+                        <p className="text-xs font-semibold text-sky-100/95 mt-2">
                           Simulator Break-Even Point (BEP) Harian
                         </p>
-                        <p className="text-xs text-sky-200/75 mt-0.5">
+                        <p className="text-xs text-sky-200/80 mt-0.5">
                           Geser target penjualan cup per hari untuk menguji kelayakan profit kedai.
                         </p>
                       </div>
                       <span
-                        className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold border ${
+                        className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold border transition-colors duration-300 ${
                           stats.selisihBep >= 0
-                            ? 'bg-emerald-400/20 text-emerald-200 border-emerald-300/40'
-                            : 'bg-rose-400/20 text-rose-200 border-rose-300/40'
+                            ? 'bg-emerald-500/20 text-emerald-200 border-emerald-300/45'
+                            : 'bg-rose-500/20 text-rose-200 border-rose-300/45'
                         }`}
                       >
                         {stats.selisihBep >= 0 ? 'LAYAK & PROFIT HARI INI' : 'BELUM MENUTUP BIAYA HARIAN'}
@@ -752,21 +764,21 @@ export default function SmaraKopiApp() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                       <div className="smara-glass-soft p-4 rounded-2xl">
-                        <p className="text-[11px] text-sky-200/80">Profit Kotor / Hari</p>
+                        <p className="text-[11px] text-sky-200/85">Profit Kotor / Hari</p>
                         <p className="text-lg font-bold text-white mt-1">
                           {formatRupiah(stats.estimasiProfitHarian)}
                         </p>
                       </div>
                       <div className="smara-glass-soft p-4 rounded-2xl">
-                        <p className="text-[11px] text-sky-200/80">Beban Operasional / Hari</p>
+                        <p className="text-[11px] text-sky-200/85">Beban Operasional / Hari</p>
                         <p className="text-lg font-bold text-rose-300 mt-1">
                           - {formatRupiah(stats.totalOpsHarian)}
                         </p>
                       </div>
                       <div className="smara-glass-soft p-4 rounded-2xl">
-                        <p className="text-[11px] text-sky-200/80">Net Profit Bersih / Hari</p>
+                        <p className="text-[11px] text-sky-200/85">Net Profit Bersih / Hari</p>
                         <p
-                          className={`text-lg font-bold mt-1 ${
+                          className={`text-lg font-bold mt-1 transition-colors duration-200 ${
                             stats.selisihBep >= 0 ? 'text-emerald-300' : 'text-rose-300'
                           }`}
                         >
@@ -776,7 +788,7 @@ export default function SmaraKopiApp() {
                     </div>
                   </div>
 
-                  <div className="smara-glass rounded-3xl p-5 flex flex-col max-h-[395px]">
+                  <div className="smara-glass rounded-3xl p-5 flex flex-col max-h-[410px]">
                     <div className="flex items-center justify-between pb-3 border-b border-white/15">
                       <h3 className="font-bold text-base text-white">Menu List</h3>
                       <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-white/10 text-sky-200 font-semibold">
@@ -786,12 +798,12 @@ export default function SmaraKopiApp() {
 
                     <div className="mt-3 space-y-3 overflow-y-auto pr-2 smara-scroll flex-1">
                       {menuEnriched.length === 0 ? (
-                        <p className="text-xs text-sky-200/70 text-center py-8">Belum ada menu tersimpan.</p>
+                        <p className="text-xs text-sky-200/75 text-center py-8">Belum ada menu tersimpan.</p>
                       ) : (
                         menuEnriched.map((m) => {
                           const hppRatio = m.hargaJual > 0 ? Math.min(100, (m.totalHpp / m.hargaJual) * 100) : 0;
                           return (
-                            <div key={m.id} className="smara-glass-soft p-3.5 rounded-2xl space-y-2">
+                            <div key={m.id} className="smara-glass-soft p-3.5 rounded-2xl space-y-2 hover:border-sky-300/35">
                               <div className="flex justify-between items-start gap-2 text-xs font-semibold">
                                 <span className="text-white leading-snug">{m.nama_produk}</span>
                                 <span className="text-emerald-300 shrink-0">+{m.marginPct.toFixed(0)}%</span>
@@ -799,11 +811,11 @@ export default function SmaraKopiApp() {
                               <div className="w-full h-2 bg-emerald-400/25 rounded-full overflow-hidden">
                                 <div
                                   style={{ width: `${hppRatio}%` }}
-                                  className="bg-sky-300 h-full rounded-full"
+                                  className="bg-sky-300 h-full rounded-full transition-all duration-500"
                                   title="Porsi HPP"
                                 />
                               </div>
-                              <div className="flex justify-between text-[11px] text-sky-200/80">
+                              <div className="flex justify-between text-[11px] text-sky-200/85">
                                 <span>HPP: {formatRupiah(m.totalHpp)}</span>
                                 <span className="text-white font-semibold">Jual: {formatRupiah(m.hargaJual)}</span>
                               </div>
@@ -817,13 +829,14 @@ export default function SmaraKopiApp() {
               </div>
             )}
 
+            {/* ================= TAB 2: MASTER BAHAN BAKU (DROPDOWN LIST) ================= */}
             {activeTab === 'bahan' && (
-              <div className="space-y-5">
+              <div key="tab-bahan" className="space-y-5 smara-animate-tab">
                 <div className="smara-glass rounded-3xl p-5 flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <h2 className="text-xl font-bold text-white">Master Bahan Baku</h2>
-                    <p className="text-xs text-sky-200/80 mt-0.5">
-                      Kelola stok harga kemasan &amp; kalkulasi otomatis harga per satuan.
+                    <p className="text-xs text-sky-200/85 mt-0.5">
+                      Klik nama bahan untuk melihat Key ID, kemasan, harga beli &amp; harga per satuan.
                     </p>
                   </div>
                   <span className="px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-semibold text-sky-200">
@@ -895,7 +908,7 @@ export default function SmaraKopiApp() {
                       <button
                         type="submit"
                         disabled={saving}
-                        className="flex-1 bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 disabled:opacity-60 text-[#041226] font-bold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+                        className="flex-1 bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 active:scale-[0.98] disabled:opacity-60 text-[#041226] font-bold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                       >
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                         {editingBahanId ? 'Update' : 'Simpan'}
@@ -922,35 +935,50 @@ export default function SmaraKopiApp() {
                   </form>
                 )}
 
-                <div className="smara-glass rounded-3xl overflow-hidden">
-                  <div className="overflow-x-auto smara-scroll">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-white/10 border-b border-white/15 text-[11px] uppercase tracking-wider text-sky-200">
-                          <th className="p-4">Key ID</th>
-                          <th className="p-4">Nama Bahan</th>
-                          <th className="p-4">Kemasan</th>
-                          <th className="p-4">Harga Beli</th>
-                          <th className="p-4">Harga / Satuan</th>
-                          {isAdmin && <th className="p-4 text-right">Aksi</th>}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/10 text-sm">
-                        {bahanBaku.map((b) => {
-                          const unitPrice = Number(b.harga_beli) / Number(b.ukuran_kemasan);
-                          return (
-                            <tr key={b.id} className="hover:bg-white/5 transition">
-                              <td className="p-4 font-mono text-xs font-bold text-sky-300">{b.id}</td>
-                              <td className="p-4 font-semibold text-white">{b.nama_bahan}</td>
-                              <td className="p-4 text-sky-100">
-                                {Number(b.ukuran_kemasan)} {b.satuan}
-                              </td>
-                              <td className="p-4 text-sky-100">{formatRupiah(b.harga_beli)}</td>
-                              <td className="p-4 font-semibold text-emerald-300">
-                                {formatRupiah(unitPrice)} / {b.satuan}
-                              </td>
+                {/* LIST DROPDOWN BAHAN BAKU (RINGKAS: NO | NAMA BAHAN | AKSI) */}
+                <section className="smara-glass rounded-3xl overflow-hidden">
+                  <div className="grid grid-cols-12 items-center px-5 py-3.5 bg-white/10 border-b border-white/15 text-[11px] uppercase tracking-wider text-sky-200 font-bold">
+                    <div className="col-span-2 sm:col-span-1">No</div>
+                    <div className={isAdmin ? 'col-span-6 sm:col-span-8' : 'col-span-10 sm:col-span-11'}>Nama Bahan</div>
+                    {isAdmin && <div className="col-span-4 sm:col-span-3 text-right">Aksi</div>}
+                  </div>
+
+                  <div className="divide-y divide-white/10">
+                    {bahanBaku.length === 0 ? (
+                      <div className="p-8 text-center text-sm text-sky-200/75">Belum ada bahan baku tersimpan.</div>
+                    ) : (
+                      bahanBaku.map((b, index) => {
+                        const unitPrice = Number(b.harga_beli) / Number(b.ukuran_kemasan);
+                        const isOpen = expandedBahanIds.includes(b.id);
+                        return (
+                          <div key={b.id} className="transition">
+                            <div className="grid grid-cols-12 items-center px-5 py-4 hover:bg-white/5 transition gap-2">
+                              <div className="col-span-2 sm:col-span-1 text-sm font-mono text-sky-300 font-bold">
+                                {index + 1}
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => toggleBahanDropdown(b.id)}
+                                className={`${
+                                  isAdmin ? 'col-span-6 sm:col-span-8' : 'col-span-10 sm:col-span-11'
+                                } flex items-center justify-between text-left gap-3 group cursor-pointer`}
+                              >
+                                <span className="font-bold text-white group-hover:text-sky-200 transition text-sm sm:text-base">
+                                  {b.nama_bahan}
+                                </span>
+                                <span className="inline-flex items-center gap-1 text-[11px] text-sky-200 px-2.5 py-1 rounded-full bg-white/10 border border-white/15 shrink-0">
+                                  <span className="hidden sm:inline">{isOpen ? 'Tutup' : 'Detail'}</span>
+                                  <ChevronDown
+                                    className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                                      isOpen ? 'rotate-180' : ''
+                                    }`}
+                                  />
+                                </span>
+                              </button>
+
                               {isAdmin && (
-                                <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
+                                <div className="col-span-4 sm:col-span-3 flex items-center justify-end gap-1.5">
                                   <button
                                     disabled={saving}
                                     onClick={() => {
@@ -962,11 +990,13 @@ export default function SmaraKopiApp() {
                                         satuan: b.satuan,
                                         harga_beli: String(b.harga_beli),
                                       });
+                                      window.scrollTo({ top: 0, behavior: 'smooth' });
                                     }}
-                                    className="p-2 rounded-xl bg-sky-400/15 hover:bg-sky-400/30 text-sky-200 transition cursor-pointer disabled:opacity-50"
+                                    className="px-2.5 py-1.5 rounded-xl bg-sky-400/20 hover:bg-sky-400/35 border border-sky-300/25 text-sky-100 text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
                                     title="Edit Bahan"
                                   >
-                                    <Edit3 className="w-4 h-4" />
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">Edit</span>
                                   </button>
                                   <button
                                     disabled={saving}
@@ -980,25 +1010,57 @@ export default function SmaraKopiApp() {
                                         );
                                       }
                                     }}
-                                    className="p-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 text-rose-200 transition cursor-pointer disabled:opacity-50"
+                                    className="px-2.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 border border-rose-300/25 text-rose-100 text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
                                     title="Hapus Bahan"
                                   >
-                                    <Trash2 className="w-4 h-4" />
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">Hapus</span>
                                   </button>
-                                </td>
+                                </div>
                               )}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                            </div>
+
+                            {/* Dropdown Detail Bahan Baku (Smooth Accordion) */}
+                            <div className="smara-accordion" data-open={isOpen ? 'true' : 'false'}>
+                              <div className="smara-accordion-inner">
+                                <div className="px-5 pb-5 pt-3 bg-[#041226]/40 border-t border-white/10">
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div className="smara-glass-soft p-3.5 rounded-2xl">
+                                      <p className="text-[11px] uppercase tracking-wider text-sky-200/80">Key ID</p>
+                                      <p className="text-sm font-mono font-bold text-sky-300 mt-1">{b.id}</p>
+                                    </div>
+                                    <div className="smara-glass-soft p-3.5 rounded-2xl">
+                                      <p className="text-[11px] uppercase tracking-wider text-sky-200/80">Kemasan</p>
+                                      <p className="text-sm font-bold text-white mt-1">
+                                        {Number(b.ukuran_kemasan)} {b.satuan}
+                                      </p>
+                                    </div>
+                                    <div className="smara-glass-soft p-3.5 rounded-2xl">
+                                      <p className="text-[11px] uppercase tracking-wider text-sky-200/80">Harga Beli</p>
+                                      <p className="text-sm font-bold text-white mt-1">{formatRupiah(b.harga_beli)}</p>
+                                    </div>
+                                    <div className="smara-glass-soft p-3.5 rounded-2xl">
+                                      <p className="text-[11px] uppercase tracking-wider text-sky-200/80">Harga / Satuan</p>
+                                      <p className="text-sm font-bold text-emerald-300 mt-1">
+                                        {formatRupiah(unitPrice)} / {b.satuan}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
-                </div>
+                </section>
               </div>
             )}
 
+            {/* ================= TAB 3: MENU (DROPDOWN LIST + CRUD) ================= */}
             {activeTab === 'menu' && (
-              <div className="space-y-6">
+              <div key="tab-menu" className="space-y-6 smara-animate-tab">
                 <section className="smara-glass rounded-3xl overflow-hidden">
                   <div className="p-5 bg-white/10 border-b border-white/15 flex flex-wrap items-center justify-between gap-2">
                     <div>
@@ -1038,9 +1100,13 @@ export default function SmaraKopiApp() {
                                 <span className="font-bold text-white group-hover:text-sky-200 transition text-sm sm:text-base">
                                   {m.nama_produk}
                                 </span>
-                                <span className="inline-flex items-center gap-1 text-[11px] text-sky-300/90 px-2.5 py-1 rounded-full bg-white/10 border border-white/15 shrink-0">
+                                <span className="inline-flex items-center gap-1 text-[11px] text-sky-200 px-2.5 py-1 rounded-full bg-white/10 border border-white/15 shrink-0">
                                   <span className="hidden sm:inline">{isOpen ? 'Tutup' : 'Detail'}</span>
-                                  {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                  <ChevronDown
+                                    className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                                      isOpen ? 'rotate-180' : ''
+                                    }`}
+                                  />
                                 </span>
                               </button>
 
@@ -1049,7 +1115,7 @@ export default function SmaraKopiApp() {
                                   <button
                                     disabled={saving}
                                     onClick={() => startEditMenu(m)}
-                                    className="px-3 py-1.5 rounded-xl bg-sky-400/20 hover:bg-sky-400/35 border border-sky-300/25 text-sky-100 text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                                    className="px-2.5 py-1.5 rounded-xl bg-sky-400/20 hover:bg-sky-400/35 border border-sky-300/25 text-sky-100 text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
                                   >
                                     <Edit3 className="w-3.5 h-3.5" />
                                     <span className="hidden sm:inline">Edit</span>
@@ -1066,7 +1132,7 @@ export default function SmaraKopiApp() {
                                         );
                                       }
                                     }}
-                                    className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 border border-rose-300/25 text-rose-100 text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                                    className="px-2.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 border border-rose-300/25 text-rose-100 text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                     <span className="hidden sm:inline">Hapus</span>
@@ -1075,57 +1141,60 @@ export default function SmaraKopiApp() {
                               )}
                             </div>
 
-                            {isOpen && (
-                              <div className="px-5 pb-5 pt-1 bg-[#041226]/35 border-t border-white/10 space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
-                                  <div className="smara-glass-soft p-3.5 rounded-2xl">
-                                    <p className="text-[11px] uppercase tracking-wider text-sky-200/80">Total HPP</p>
-                                    <p className="text-base font-bold text-sky-200 mt-1">{formatRupiah(m.totalHpp)}</p>
+                            {/* Dropdown Detail Menu (Smooth Accordion) */}
+                            <div className="smara-accordion" data-open={isOpen ? 'true' : 'false'}>
+                              <div className="smara-accordion-inner">
+                                <div className="px-5 pb-5 pt-3 bg-[#041226]/40 border-t border-white/10 space-y-4">
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="smara-glass-soft p-3.5 rounded-2xl">
+                                      <p className="text-[11px] uppercase tracking-wider text-sky-200/80">Total HPP</p>
+                                      <p className="text-base font-bold text-sky-200 mt-1">{formatRupiah(m.totalHpp)}</p>
+                                    </div>
+                                    <div className="smara-glass-soft p-3.5 rounded-2xl">
+                                      <p className="text-[11px] uppercase tracking-wider text-sky-200/80">Harga Jual</p>
+                                      <p className="text-base font-bold text-white mt-1">{formatRupiah(m.hargaJual)}</p>
+                                    </div>
+                                    <div className="smara-glass-soft p-3.5 rounded-2xl">
+                                      <p className="text-[11px] uppercase tracking-wider text-sky-200/80">Profit &amp; Margin</p>
+                                      <div className="flex items-center justify-between gap-2 mt-1">
+                                        <span className="text-base font-bold text-emerald-300">
+                                          +{formatRupiah(m.profit)}
+                                        </span>
+                                        <span className="px-2 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/35 text-emerald-200 text-[11px] font-bold">
+                                          {m.marginPct.toFixed(1)}%
+                                        </span>
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div className="smara-glass-soft p-3.5 rounded-2xl">
-                                    <p className="text-[11px] uppercase tracking-wider text-sky-200/80">Harga Jual</p>
-                                    <p className="text-base font-bold text-white mt-1">{formatRupiah(m.hargaJual)}</p>
-                                  </div>
-                                  <div className="smara-glass-soft p-3.5 rounded-2xl">
-                                    <p className="text-[11px] uppercase tracking-wider text-sky-200/80">Profit &amp; Margin</p>
-                                    <div className="flex items-center justify-between gap-2 mt-1">
-                                      <span className="text-base font-bold text-emerald-300">
-                                        +{formatRupiah(m.profit)}
-                                      </span>
-                                      <span className="px-2 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/35 text-emerald-200 text-[11px] font-bold">
-                                        {m.marginPct.toFixed(1)}%
-                                      </span>
+
+                                  <div className="smara-glass-soft p-4 rounded-2xl">
+                                    <p className="text-[11px] uppercase tracking-wider text-sky-200/80 font-bold mb-2.5">
+                                      Komposisi Bahan ({m.resep.length} item)
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {m.resep.map((r, idx) => {
+                                        const b = bahanMap[r.bahan_baku_id];
+                                        const cost = b ? Number(r.jumlah_pemakaian) * b.harga_per_unit : 0;
+                                        return (
+                                          <span
+                                            key={idx}
+                                            className="px-3 py-1.5 rounded-xl bg-[#092447]/80 border border-sky-300/25 text-xs text-sky-50 flex items-center gap-1.5"
+                                          >
+                                            <span className="font-semibold">{b ? b.nama_bahan : r.bahan_baku_id}</span>
+                                            <span className="text-sky-300">
+                                              ({Number(r.jumlah_pemakaian)} {r.satuan_pemakaian})
+                                            </span>
+                                            <span className="text-emerald-300/90 font-mono text-[11px]">
+                                              • {formatRupiah(cost)}
+                                            </span>
+                                          </span>
+                                        );
+                                      })}
                                     </div>
                                   </div>
                                 </div>
-
-                                <div className="smara-glass-soft p-4 rounded-2xl">
-                                  <p className="text-[11px] uppercase tracking-wider text-sky-200/80 font-bold mb-2.5">
-                                    Komposisi Bahan ({m.resep.length} item)
-                                  </p>
-                                  <div className="flex flex-wrap gap-2">
-                                    {m.resep.map((r, idx) => {
-                                      const b = bahanMap[r.bahan_baku_id];
-                                      const cost = b ? Number(r.jumlah_pemakaian) * b.harga_per_unit : 0;
-                                      return (
-                                        <span
-                                          key={idx}
-                                          className="px-3 py-1.5 rounded-xl bg-[#092447]/70 border border-sky-300/25 text-xs text-sky-50 flex items-center gap-1.5"
-                                        >
-                                          <span className="font-semibold">{b ? b.nama_bahan : r.bahan_baku_id}</span>
-                                          <span className="text-sky-300">
-                                            ({Number(r.jumlah_pemakaian)} {r.satuan_pemakaian})
-                                          </span>
-                                          <span className="text-emerald-300/90 font-mono text-[11px]">
-                                            • {formatRupiah(cost)}
-                                          </span>
-                                        </span>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
                               </div>
-                            )}
+                            </div>
                           </div>
                         );
                       })
@@ -1221,14 +1290,14 @@ export default function SmaraKopiApp() {
                           <button
                             type="button"
                             onClick={handleAddBahanToDraft}
-                            className="bg-white/15 hover:bg-white/25 border border-white/25 text-white font-semibold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+                            className="bg-white/15 hover:bg-white/25 active:scale-[0.98] border border-white/25 text-white font-semibold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                           >
                             <Plus className="w-4 h-4" /> Tambah Bahan
                           </button>
                         </div>
 
                         {menuForm.resep.length > 0 && (
-                          <div className="divide-y divide-white/10 bg-[#041226]/45 rounded-xl border border-white/15 px-4">
+                          <div className="divide-y divide-white/10 bg-[#041226]/65 rounded-xl border border-white/15 px-4">
                             {menuForm.resep.map((item, idx) => {
                               const b = bahanMap[item.bahan_baku_id];
                               const cost = b ? Number(item.jumlah_pemakaian) * b.harga_per_unit : 0;
@@ -1279,7 +1348,7 @@ export default function SmaraKopiApp() {
                           />
                         </div>
 
-                        <div className="p-4 rounded-xl bg-[#041226]/45 border border-white/15">
+                        <div className="p-4 rounded-xl bg-[#041226]/65 border border-white/15">
                           <p className="text-xs text-sky-200/80">Profit Kotor per Cup</p>
                           <p
                             className={`text-xl font-bold mt-0.5 ${
@@ -1307,7 +1376,7 @@ export default function SmaraKopiApp() {
                         <button
                           type="submit"
                           disabled={saving}
-                          className="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 disabled:opacity-60 text-[#041226] font-bold py-3 px-8 rounded-xl shadow-lg shadow-sky-950/50 flex items-center gap-2 transition cursor-pointer"
+                          className="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 active:scale-[0.98] disabled:opacity-60 text-[#041226] font-bold py-3 px-8 rounded-xl shadow-lg shadow-sky-950/50 flex items-center gap-2 transition-all cursor-pointer"
                         >
                           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
                           {editingMenuId ? 'Simpan Perubahan Menu' : 'Simpan Menu ke Database'}
@@ -1319,8 +1388,9 @@ export default function SmaraKopiApp() {
               </div>
             )}
 
+            {/* ================= TAB 4: OPERASIONAL & INVENTARIS ================= */}
             {activeTab === 'operasional' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div key="tab-operasional" className="grid grid-cols-1 lg:grid-cols-2 gap-6 smara-animate-tab">
                 <div className="smara-glass p-6 rounded-3xl space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-bold text-lg text-white">Biaya Operasional Bulanan</h3>
@@ -1363,7 +1433,7 @@ export default function SmaraKopiApp() {
                       <button
                         type="submit"
                         disabled={saving}
-                        className="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 disabled:opacity-60 text-[#041226] rounded-xl text-sm font-bold py-2.5 flex items-center justify-center gap-1 cursor-pointer"
+                        className="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 active:scale-[0.98] disabled:opacity-60 text-[#041226] rounded-xl text-sm font-bold py-2.5 flex items-center justify-center gap-1 transition-all cursor-pointer"
                       >
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : '+ Tambah'}
                       </button>
@@ -1375,7 +1445,7 @@ export default function SmaraKopiApp() {
                       <div key={o.id} className="py-3.5 flex items-center justify-between text-sm">
                         <div>
                           <p className="font-semibold text-white">{o.nama_kebutuhan}</p>
-                          <p className="text-xs text-sky-200/70">{o.catatan || o.periode}</p>
+                          <p className="text-xs text-sky-200/75">{o.catatan || o.periode}</p>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="font-bold text-sky-200">{formatRupiah(o.biaya_bulanan)}</span>
@@ -1447,7 +1517,7 @@ export default function SmaraKopiApp() {
                       <button
                         type="submit"
                         disabled={saving}
-                        className="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 disabled:opacity-60 text-[#041226] rounded-xl text-sm font-bold py-2.5 flex items-center justify-center gap-1 cursor-pointer"
+                        className="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 active:scale-[0.98] disabled:opacity-60 text-[#041226] rounded-xl text-sm font-bold py-2.5 flex items-center justify-center gap-1 transition-all cursor-pointer"
                       >
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : '+ Tambah'}
                       </button>
@@ -1480,7 +1550,7 @@ export default function SmaraKopiApp() {
                                   `Status "${inv.nama_barang}" diperbarui.`
                                 )
                               }
-                              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border cursor-pointer disabled:opacity-50 ${
+                              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors cursor-pointer disabled:opacity-50 ${
                                 inv.status_kebutuhan === 'Terpenuhi'
                                   ? 'bg-emerald-400/20 border-emerald-300/35 text-emerald-200'
                                   : 'bg-amber-400/20 border-amber-300/35 text-amber-200'

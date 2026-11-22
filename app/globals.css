@@ -30,32 +30,34 @@ body {
 }
 
 .smara-glass {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.13) 0%, rgba(147, 213, 250, 0.06) 100%);
+  background: linear-gradient(145deg, rgba(13, 38, 74, 0.78) 0%, rgba(8, 28, 56, 0.70) 100%);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(255, 255, 255, 0.24);
+  border: 1px solid rgba(186, 230, 253, 0.26);
   box-shadow:
-    0 12px 36px rgba(2, 12, 27, 0.42),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    0 12px 36px rgba(2, 12, 27, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
 }
 
+/* Gelap-transparan kontras tinggi tanpa nested blur agar tidak jadi putih di Safari iOS */
 .smara-glass-soft {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(4, 18, 38, 0.58);
+  border: 1px solid rgba(186, 230, 253, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .smara-nav-active {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.28) 0%, rgba(125, 211, 252, 0.18) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.34) 0%, rgba(14, 116, 144, 0.28) 100%);
+  border: 1px solid rgba(186, 230, 253, 0.5);
   box-shadow:
-    0 4px 18px rgba(56, 189, 248, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    0 4px 18px rgba(56, 189, 248, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .smara-input {
-  background: rgba(6, 24, 48, 0.55);
+  background: rgba(4, 18, 38, 0.74);
   border: 1px solid rgba(186, 230, 253, 0.28);
   color: #f8fafc;
   transition: all 0.2s ease;
@@ -68,13 +70,46 @@ body {
 .smara-input:focus {
   outline: none;
   border-color: #7dd3fc;
-  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.2);
-  background: rgba(6, 24, 48, 0.78);
+  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.22);
+  background: rgba(4, 18, 38, 0.9);
 }
 
 .smara-input option {
   background-color: #092447;
   color: #f8fafc;
+}
+
+/* Animasi transisi antar tab & elemen masuk */
+@keyframes smaraFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.smara-animate-tab {
+  animation: smaraFadeUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Animasi buka-tutup dropdown smooth */
+.smara-accordion {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+}
+
+.smara-accordion[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.smara-accordion-inner {
+  overflow: hidden;
 }
 
 .smara-scroll::-webkit-scrollbar {
