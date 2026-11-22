@@ -1,6 +1,5 @@
-﻿import SmaraPlayCodeWidget from '@/components/SmaraPlayCodeWidget';
-'use client';
-
+﻿'use client';
+import SmaraPlayCodeWidget from '@/components/SmaraPlayCodeWidget';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Coffee,
@@ -1602,4 +1601,5 @@ export default function SmaraKopiApp() {
     </div>
   );
 }
+
 
