@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
@@ -11,8 +11,6 @@ import {
   Trash2,
   Edit3,
   AlertCircle,
-  TrendingUp,
-  Wallet,
   Database,
   RefreshCw,
   Check,
@@ -20,7 +18,12 @@ import {
   Lock,
   LogOut,
   Eye,
-  ShieldCheck
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  CheckCircle2,
+  Percent,
 } from 'lucide-react';
 
 const formatRupiah = (angka) => {
@@ -41,33 +44,106 @@ const generateRandomBahanId = () => {
   return result;
 };
 
-export default function KopiJawaApp() {
-  // Auth State
+function SmaraLogo({ size = 'md' }) {
+  const [imgError, setImgError] = useState(false);
+
+  if (!imgError) {
+    return (
+      <div className="flex flex-col items-center select-none">
+        <img
+          src="/logo-smara.jpg"
+          alt="SMARA KOPI"
+          onError={() => setImgError(true)}
+          className={`${
+            size === 'lg' ? 'w-32 h-32' : 'w-24 h-24'
+          } object-contain mix-blend-screen drop-shadow-[0_0_16px_rgba(125,211,252,0.35)]`}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center select-none">
+      <svg
+        viewBox="0 0 120 105"
+        className={`${
+          size === 'lg' ? 'w-24 h-20' : 'w-16 h-14'
+        } drop-shadow-[0_0_14px_rgba(125,211,252,0.45)]`}
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M66 10C39 10 18 31 18 57C18 82 39 101 65 101C80 101 93 94 102 84C95 87 87 89 78 89C53 89 35 71 35 48C35 30 47 16 66 10Z"
+          fill="#93D5FA"
+        />
+        <path
+          d="M66 47C66 47 50 38 50 27C50 21 55 17 60 17C64 17 67 20 68 23C70 19 74 16 79 16C85 16 90 21 90 27C90 38 74 47 72 49"
+          stroke="#93D5FA"
+          strokeWidth="4.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M47 55H88V68C88 79 79 87 67.5 87C56 87 47 79 47 68V55Z"
+          fill="#93D5FA"
+        />
+        <ellipse cx="67.5" cy="55" rx="20.5" ry="4.5" fill="#092447" stroke="#93D5FA" strokeWidth="3" />
+        <path
+          d="M88 60H94C98.5 60 101 63 101 67C101 71.5 98 75 93.5 75H87"
+          stroke="#93D5FA"
+          strokeWidth="4.5"
+          strokeLinecap="round"
+        />
+      </svg>
+      <div className={`${size === 'lg' ? 'text-2xl mt-2' : 'text-sm mt-1'} font-extrabold tracking-[0.18em]`}>
+        <span className="text-white">SMARA </span>
+        <span className="text-sky-300">KOPI</span>
+      </div>
+    </div>
+  );
+}
+
+export default function SmaraKopiApp() {
   const [authChecking, setAuthChecking] = useState(true);
-  const [user, setUser] = useState(null); // { username, role: 'admin' | 'viewer' }
+  const [user, setUser] = useState(null);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
 
   const isAdmin = user?.role === 'admin';
 
-  // App State
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingLabel, setSavingLabel] = useState('Memproses data...');
   const [errorMsg, setErrorMsg] = useState('');
+  const [toast, setToast] = useState(null);
 
-  // State Data Database
+  const showToast = (type, message) => {
+    setToast({ type, message });
+  };
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), toast.type === 'error' ? 7500 : 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   const [bahanBaku, setBahanBaku] = useState([]);
   const [produk, setProduk] = useState([]);
   const [resepDetail, setResepDetail] = useState([]);
   const [operasional, setOperasional] = useState([]);
   const [inventaris, setInventaris] = useState([]);
 
-  // Simulator BEP State
+  const [expandedMenuIds, setExpandedMenuIds] = useState([]);
+  const toggleMenuDropdown = (id) => {
+    setExpandedMenuIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
   const [targetCupHarian, setTargetCupHarian] = useState(25);
 
-  // Form Bahan Baku
   const [newBahan, setNewBahan] = useState({
     id: '',
     nama_bahan: '',
@@ -77,7 +153,6 @@ export default function KopiJawaApp() {
   });
   const [editingBahanId, setEditingBahanId] = useState(null);
 
-  // Form Menu (Layer 2 CRUD)
   const [editingMenuId, setEditingMenuId] = useState(null);
   const [menuForm, setMenuForm] = useState({
     nama_produk: '',
@@ -87,11 +162,19 @@ export default function KopiJawaApp() {
   const [selectedBahanInput, setSelectedBahanInput] = useState('');
   const [jumlahPemakaianInput, setJumlahPemakaianInput] = useState('');
 
-  // Form Operasional & Inventaris
-  const [newOps, setNewOps] = useState({ nama_kebutuhan: '', periode: '1 Bulan', biaya_bulanan: '', catatan: '' });
-  const [newInv, setNewInv] = useState({ nama_barang: '', kondisi: 'Baru', harga_barang: '', status_kebutuhan: 'Terpenuhi' });
+  const [newOps, setNewOps] = useState({
+    nama_kebutuhan: '',
+    periode: '1 Bulan',
+    biaya_bulanan: '',
+    catatan: '',
+  });
+  const [newInv, setNewInv] = useState({
+    nama_barang: '',
+    kondisi: 'Baru',
+    harga_barang: '',
+    status_kebutuhan: 'Terpenuhi',
+  });
 
-  // Cek sesi login saat halaman pertama kali dibuka
   useEffect(() => {
     setNewBahan((prev) => ({ ...prev, id: generateRandomBahanId() }));
     const checkAuth = async () => {
@@ -101,16 +184,13 @@ export default function KopiJawaApp() {
           const data = await res.json();
           setUser(data.user);
         }
-      } catch {
-        // Belum login
-      } finally {
+      } catch {} finally {
         setAuthChecking(false);
       }
     };
     checkAuth();
   }, []);
 
-  // Fetch Data dari API TiDB Cloud setelah login berhasil
   const fetchAllData = async () => {
     setLoading(true);
     setErrorMsg('');
@@ -140,7 +220,6 @@ export default function KopiJawaApp() {
     }
   }, [user]);
 
-  // Handler Login & Logout
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoggingIn(true);
@@ -171,9 +250,9 @@ export default function KopiJawaApp() {
     setUser(null);
   };
 
-  // Helper API Action (Khusus Admin)
-  const sendAction = async (action, payload) => {
+  const sendAction = async (action, payload, label = 'Memproses database...', successMessage = 'Berhasil diperbarui!') => {
     if (!isAdmin) return false;
+    setSavingLabel(label);
     setSaving(true);
     try {
       const res = await fetch('/api/kopi-jawa', {
@@ -184,16 +263,16 @@ export default function KopiJawaApp() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Gagal menyimpan ke database');
       await fetchAllData();
+      showToast('success', successMessage);
       return true;
     } catch (err) {
-      alert('Error: ' + err.message);
+      showToast('error', err.message);
       return false;
     } finally {
       setSaving(false);
     }
   };
 
-  // Kalkulasi Bahan Baku Map
   const bahanMap = useMemo(() => {
     const map = {};
     bahanBaku.forEach((b) => {
@@ -203,7 +282,6 @@ export default function KopiJawaApp() {
     return map;
   }, [bahanBaku]);
 
-  // Kalkulasi Lengkap per Menu
   const menuEnriched = useMemo(() => {
     return produk.map((p) => {
       const items = resepDetail.filter((r) => r.produk_id === p.id);
@@ -219,12 +297,13 @@ export default function KopiJawaApp() {
     });
   }, [produk, resepDetail, bahanMap]);
 
-  // Metrik Dashboard
   const stats = useMemo(() => {
     const avgHargaJual =
       menuEnriched.length > 0 ? menuEnriched.reduce((acc, m) => acc + m.hargaJual, 0) / menuEnriched.length : 0;
     const avgProfitCup =
       menuEnriched.length > 0 ? menuEnriched.reduce((acc, m) => acc + m.profit, 0) / menuEnriched.length : 0;
+    const avgMarginPct =
+      menuEnriched.length > 0 ? menuEnriched.reduce((acc, m) => acc + m.marginPct, 0) / menuEnriched.length : 0;
     const totalOpsBulanan = operasional.reduce((acc, o) => acc + Number(o.biaya_bulanan), 0);
     const totalOpsHarian = totalOpsBulanan / 30;
     const totalInventaris = inventaris.reduce((acc, i) => acc + Number(i.harga_barang), 0);
@@ -235,6 +314,7 @@ export default function KopiJawaApp() {
     return {
       avgHargaJual,
       avgProfitCup,
+      avgMarginPct,
       totalOpsBulanan,
       totalOpsHarian,
       totalInventaris,
@@ -244,7 +324,6 @@ export default function KopiJawaApp() {
     };
   }, [menuEnriched, operasional, inventaris, targetCupHarian]);
 
-  // Kalkulasi Real-Time Form Menu (Layer 2)
   const draftMenuCalc = useMemo(() => {
     const subtotalHpp = menuForm.resep.reduce((acc, item) => {
       const b = bahanMap[item.bahan_baku_id];
@@ -257,38 +336,46 @@ export default function KopiJawaApp() {
     return { subtotalHpp, hargaJualNum, profit, marginFromHpp };
   }, [menuForm, bahanMap]);
 
-  // Handler Bahan Baku
   const handleSaveBahan = async (e) => {
     e.preventDefault();
     if (!newBahan.nama_bahan || !newBahan.ukuran_kemasan || !newBahan.harga_beli) return;
 
     if (editingBahanId) {
-      const ok = await sendAction('UPDATE_BAHAN', {
-        id: editingBahanId,
-        nama_bahan: newBahan.nama_bahan,
-        ukuran_kemasan: Number(newBahan.ukuran_kemasan),
-        satuan: newBahan.satuan,
-        harga_beli: Number(newBahan.harga_beli),
-      });
+      const ok = await sendAction(
+        'UPDATE_BAHAN',
+        {
+          id: editingBahanId,
+          nama_bahan: newBahan.nama_bahan,
+          ukuran_kemasan: Number(newBahan.ukuran_kemasan),
+          satuan: newBahan.satuan,
+          harga_beli: Number(newBahan.harga_beli),
+        },
+        'Memperbarui data bahan baku...',
+        `Bahan baku "${newBahan.nama_bahan}" berhasil diperbarui.`
+      );
       if (ok) {
         setEditingBahanId(null);
         setNewBahan({ id: generateRandomBahanId(), nama_bahan: '', ukuran_kemasan: '', satuan: 'gr', harga_beli: '' });
       }
     } else {
-      const ok = await sendAction('ADD_BAHAN', {
-        id: newBahan.id,
-        nama_bahan: newBahan.nama_bahan,
-        ukuran_kemasan: Number(newBahan.ukuran_kemasan),
-        satuan: newBahan.satuan,
-        harga_beli: Number(newBahan.harga_beli),
-      });
+      const ok = await sendAction(
+        'ADD_BAHAN',
+        {
+          id: newBahan.id,
+          nama_bahan: newBahan.nama_bahan,
+          ukuran_kemasan: Number(newBahan.ukuran_kemasan),
+          satuan: newBahan.satuan,
+          harga_beli: Number(newBahan.harga_beli),
+        },
+        'Menyimpan bahan baku baru...',
+        `Bahan baku "${newBahan.nama_bahan}" berhasil ditambahkan.`
+      );
       if (ok) {
         setNewBahan({ id: generateRandomBahanId(), nama_bahan: '', ukuran_kemasan: '', satuan: 'gr', harga_beli: '' });
       }
     }
   };
 
-  // Handler Resep di Form Menu
   const handleAddBahanToDraft = () => {
     if (!selectedBahanInput || !jumlahPemakaianInput || Number(jumlahPemakaianInput) <= 0) return;
     const b = bahanMap[selectedBahanInput];
@@ -297,7 +384,8 @@ export default function KopiJawaApp() {
     const existingIdx = menuForm.resep.findIndex((r) => r.bahan_baku_id === selectedBahanInput);
     if (existingIdx >= 0) {
       const updated = [...menuForm.resep];
-      updated[existingIdx].jumlah_pemakaian = Number(updated[existingIdx].jumlah_pemakaian) + Number(jumlahPemakaianInput);
+      updated[existingIdx].jumlah_pemakaian =
+        Number(updated[existingIdx].jumlah_pemakaian) + Number(jumlahPemakaianInput);
       setMenuForm({ ...menuForm, resep: updated });
     } else {
       setMenuForm({
@@ -314,7 +402,7 @@ export default function KopiJawaApp() {
   const handleSaveMenu = async (e) => {
     e.preventDefault();
     if (!menuForm.nama_produk || menuForm.resep.length === 0 || !menuForm.harga_jual) {
-      alert('Lengkapi nama produk, minimal 1 bahan baku, dan harga jual!');
+      showToast('error', 'Lengkapi nama produk, minimal 1 bahan baku, dan harga jual!');
       return;
     }
 
@@ -326,7 +414,12 @@ export default function KopiJawaApp() {
       resep: menuForm.resep,
     };
 
-    const ok = await sendAction(editingMenuId ? 'UPDATE_MENU' : 'ADD_MENU', payload);
+    const ok = await sendAction(
+      editingMenuId ? 'UPDATE_MENU' : 'ADD_MENU',
+      payload,
+      editingMenuId ? 'Menyimpan perubahan menu...' : 'Menambahkan menu baru...',
+      editingMenuId ? `Menu "${menuForm.nama_produk}" berhasil diperbarui.` : `Menu "${menuForm.nama_produk}" berhasil disimpan.`
+    );
     if (ok) {
       setEditingMenuId(null);
       setMenuForm({ nama_produk: '', harga_jual: '', resep: [] });
@@ -347,43 +440,38 @@ export default function KopiJawaApp() {
     document.getElementById('layer-crud-menu')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // ================= LAYAR LOADING AWAL =================
   if (authChecking) {
     return (
-      <div className="min-h-screen bg-[#231710] flex items-center justify-center text-amber-200">
-        <div className="flex items-center gap-3 text-sm font-medium">
-          <RefreshCw className="w-5 h-5 animate-spin text-amber-500" />
-          Memeriksa sesi keamanan Kopi Jawa...
+      <div className="min-h-screen smara-bg flex items-center justify-center text-sky-100 p-4">
+        <div className="smara-glass px-7 py-5 rounded-2xl flex items-center gap-3 text-sm font-medium">
+          <Loader2 className="w-5 h-5 animate-spin text-sky-300" />
+          Memeriksa sesi keamanan SMARA KOPI...
         </div>
       </div>
     );
   }
 
-  // ================= LAYAR LOGIN GERBANG UTAMA =================
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#231710] flex items-center justify-center p-4 font-sans">
-        <div className="w-full max-w-md bg-[#FAF6F1] rounded-3xl shadow-2xl overflow-hidden border border-[#3D291E]">
-          <div className="bg-[#2C1E16] p-8 text-center text-white space-y-2">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center shadow-lg mb-3">
-              <Coffee className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold tracking-wide">KOPI JAWA</h1>
-            <p className="text-xs text-amber-300/80 flex items-center justify-center gap-1.5">
-              <Lock className="w-3.5 h-3.5" /> Portal Internal Manajemen HPP & Operasional
+      <div className="min-h-screen smara-bg flex items-center justify-center p-4 font-sans">
+        <div className="w-full max-w-md smara-glass rounded-3xl overflow-hidden">
+          <div className="p-8 pb-6 text-center border-b border-white/15 bg-white/5 space-y-2">
+            <SmaraLogo size="lg" />
+            <p className="text-xs text-sky-200/80 flex items-center justify-center gap-1.5 pt-2">
+              <Lock className="w-3.5 h-3.5 text-sky-300" /> Portal Internal Gudang, HPP & Operasional
             </p>
           </div>
 
           <form onSubmit={handleLogin} className="p-8 space-y-5">
             {loginError && (
-              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+              <div className="p-3.5 rounded-xl bg-rose-500/20 border border-rose-300/40 text-rose-100 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-300" />
                 {loginError}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#7A6355] mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-sky-200/90 mb-1.5">
                 Username
               </label>
               <input
@@ -393,12 +481,12 @@ export default function KopiJawaApp() {
                 placeholder="Masukkan username admin / viewer"
                 value={loginForm.username}
                 onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-[#EADFD5] bg-white text-sm text-[#231710] focus:outline-amber-600"
+                className="w-full px-4 py-3 rounded-xl smara-input text-sm"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#7A6355] mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-sky-200/90 mb-1.5">
                 Password
               </label>
               <input
@@ -407,17 +495,17 @@ export default function KopiJawaApp() {
                 placeholder="••••••••"
                 value={loginForm.password}
                 onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-[#EADFD5] bg-white text-sm text-[#231710] focus:outline-amber-600"
+                className="w-full px-4 py-3 rounded-xl smara-input text-sm"
               />
             </div>
 
             <button
               type="submit"
               disabled={loggingIn}
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3.5 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm"
+              className="w-full bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 disabled:opacity-60 text-[#041226] font-bold py-3.5 rounded-xl shadow-lg shadow-sky-900/40 transition flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
-              <Lock className="w-4 h-4" />
-              {loggingIn ? 'Memverifikasi...' : 'Masuk ke Sistem'}
+              {loggingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+              {loggingIn ? 'Memverifikasi...' : 'Masuk ke SMARA KOPI'}
             </button>
           </form>
         </div>
@@ -425,797 +513,1020 @@ export default function KopiJawaApp() {
     );
   }
 
-  // ================= APLIKASI UTAMA (SETELAH LOGIN) =================
   return (
-    <div className="min-h-screen bg-[#FAF6F1] text-[#2C1E16] flex flex-col md:flex-row font-sans">
-      {/* Sidebar Navigasi */}
-      <aside className="w-full md:w-68 bg-[#231710] text-[#F5EBE0] flex flex-col justify-between p-6 shadow-xl">
-        <div>
-          <div className="flex items-center gap-3 pb-6 border-b border-[#3D291E]">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center shadow-lg">
-              <Coffee className="w-6 h-6 text-white" />
+    <div className="min-h-screen smara-bg text-slate-100 font-sans relative pb-10">
+      {saving && (
+        <div className="fixed inset-0 z-50 bg-[#041226]/65 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="smara-glass px-8 py-6 rounded-3xl flex flex-col items-center gap-3.5 max-w-sm w-full text-center">
+            <div className="w-12 h-12 rounded-2xl bg-sky-400/20 border border-sky-300/40 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 text-sky-300 animate-spin" />
             </div>
             <div>
-              <h1 className="font-bold text-lg tracking-wide text-white">KOPI JAWA</h1>
-              <p className="text-xs text-amber-300/80 flex items-center gap-1">
-                <Database className="w-3 h-3" /> TiDB MySQL Live
+              <p className="font-bold text-white text-base">{savingLabel}</p>
+              <p className="text-xs text-sky-200/80 mt-1">Sedang menyinkronkan ke database SMARA KOPI...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed top-5 right-5 z-50 max-w-md w-[calc(100%-2.5rem)] animate-in fade-in slide-in-from-top-3 duration-200">
+          <div
+            className={`smara-glass rounded-2xl p-4 flex items-start gap-3 shadow-2xl border ${
+              toast.type === 'error'
+                ? 'border-rose-400/50 bg-rose-950/75 text-rose-50'
+                : 'border-emerald-400/50 bg-emerald-950/75 text-emerald-50'
+            }`}
+          >
+            {toast.type === 'error' ? (
+              <AlertCircle className="w-5 h-5 text-rose-300 shrink-0 mt-0.5" />
+            ) : (
+              <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1 text-xs sm:text-sm leading-relaxed">
+              <p className="font-bold mb-0.5">
+                {toast.type === 'error' ? 'Tidak Dapat Diproses' : 'Berhasil'}
               </p>
+              <p className="opacity-95">{toast.message}</p>
             </div>
-          </div>
-
-          <nav className="mt-6 space-y-2">
-            {[
-              { id: 'dashboard', label: 'Dashboard & BEP', icon: LayoutDashboard },
-              { id: 'bahan', label: 'Master Bahan Baku', icon: Package },
-              { id: 'menu', label: 'Menu', icon: UtensilsCrossed },
-              { id: 'operasional', label: 'Operasional & Aset', icon: Receipt },
-            ].map((item) => {
-              const Icon = item.icon;
-              const active = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                    active
-                      ? 'bg-amber-600 text-white shadow-md shadow-amber-900/40'
-                      : 'text-[#D6C7B8] hover:bg-[#332218] hover:text-white'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Info Akun & Hak Akses */}
-        <div className="mt-8 pt-4 border-t border-[#3D291E] text-xs text-[#A69281] space-y-3">
-          <div className="p-3 rounded-xl bg-[#2E1E15] border border-[#3D291E] space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-white font-bold">{user.username}</span>
-              {isAdmin ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
-                  <ShieldCheck className="w-3 h-3" /> FULL ADMIN
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
-                  <Eye className="w-3 h-3" /> VIEW ONLY
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-[#A69281]">
-              {isAdmin ? 'Akses penuh tambah, edit & hapus data' : 'Mode baca saja (tidak dapat ubah data)'}
-            </p>
-          </div>
-
-          <div className="flex gap-2">
             <button
-              onClick={fetchAllData}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-[#332218] hover:bg-[#422C20] text-amber-200 transition"
+              onClick={() => setToast(null)}
+              className="p-1 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Sync
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-200 transition"
-              title="Keluar"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Keluar
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
-      </aside>
+      )}
 
-      {/* Konten Utama */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
-        {!isAdmin && (
-          <div className="mb-6 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-2.5 text-xs font-medium">
-            <Eye className="w-4 h-4 text-amber-600 shrink-0" />
-            Anda login menggunakan akun <strong>View-Only ({user.username})</strong>. Anda dapat memantau seluruh kalkulasi HPP, menu, dan BEP, namun fitur penambahan/perubahan data dinonaktifkan.
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+        <header className="flex flex-col md:flex-row items-center gap-4 md:gap-8">
+          <div className="w-full md:w-64 flex justify-center md:justify-center shrink-0">
+            <SmaraLogo size="md" />
           </div>
-        )}
-
-        {errorMsg && (
-          <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <div>
-              <p className="font-semibold text-sm">Koneksi Database Bermasalah</p>
-              <p className="text-xs">{errorMsg}</p>
-            </div>
+          <div className="flex-1 text-center md:text-center">
+            <h1 className="text-xl sm:text-2xl lg:text-[28px] font-light tracking-wide text-white leading-snug drop-shadow-sm">
+              Aplikasi Penyimpanan / Gudang,
+              <br className="hidden sm:block" /> Penghitungan HPP &amp; Operasional Usaha
+            </h1>
           </div>
-        )}
+        </header>
 
-        {/* ================= TAB 1: DASHBOARD & BEP ================= */}
-        {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-[#231710]">Ringkasan Finansial Kedai</h2>
-              <p className="text-sm text-[#7A6355]">Analisis harga jual menu, beban operasional harian, dan titik impas (BEP).</p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-2xl border border-[#EADFD5] shadow-sm">
-                <div className="flex items-center justify-between text-[#7A6355] mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Rata-Rata Harga Menu</span>
-                  <Coffee className="w-4 h-4 text-amber-600" />
-                </div>
-                <p className="text-2xl font-bold text-[#231710]">{formatRupiah(stats.avgHargaJual)}</p>
-                <p className="text-xs text-emerald-600 mt-1 font-medium">Dari {menuEnriched.length} menu aktif di database</p>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl border border-[#EADFD5] shadow-sm">
-                <div className="flex items-center justify-between text-[#7A6355] mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Operasional Bulanan</span>
-                  <Receipt className="w-4 h-4 text-amber-600" />
-                </div>
-                <p className="text-2xl font-bold text-[#231710]">{formatRupiah(stats.totalOpsBulanan)}</p>
-                <p className="text-xs text-[#7A6355] mt-1">{operasional.length} pos pengeluaran tetap</p>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl border border-[#EADFD5] shadow-sm">
-                <div className="flex items-center justify-between text-[#7A6355] mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Beban Harian (÷ 30)</span>
-                  <TrendingUp className="w-4 h-4 text-rose-500" />
-                </div>
-                <p className="text-2xl font-bold text-[#231710]">{formatRupiah(stats.totalOpsHarian)}</p>
-                <p className="text-xs text-rose-600 mt-1 font-medium">Target minimal tutup biaya/hari</p>
-              </div>
-
-              <div className="bg-white p-5 rounded-2xl border border-[#EADFD5] shadow-sm">
-                <div className="flex items-center justify-between text-[#7A6355] mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Modal Inventaris Awal</span>
-                  <Wallet className="w-4 h-4 text-amber-600" />
-                </div>
-                <p className="text-2xl font-bold text-[#231710]">{formatRupiah(stats.totalInventaris)}</p>
-                <p className="text-xs text-[#7A6355] mt-1">{inventaris.length} unit peralatan kedai</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-[#EADFD5] shadow-sm space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <h3 className="font-bold text-lg text-[#231710]">Simulator Break-Even Point (BEP) Harian</h3>
-                    <p className="text-xs text-[#7A6355]">Geser target penjualan cup per hari untuk menguji kelayakan profit kedai.</p>
-                  </div>
-                  <span
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold ${
-                      stats.selisihBep >= 0
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        : 'bg-rose-100 text-rose-800 border border-rose-200'
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          <aside className="w-full lg:w-64 shrink-0 smara-glass rounded-3xl p-5 flex flex-col justify-between lg:min-h-[540px]">
+            <nav className="space-y-2.5">
+              {[
+                { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+                { id: 'bahan', label: 'Bahan Baku', icon: Package },
+                { id: 'menu', label: 'Menu', icon: UtensilsCrossed },
+                { id: 'operasional', label: 'Operasional & Aset', icon: Receipt },
+              ].map((item) => {
+                const Icon = item.icon;
+                const active = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`w-full flex items-center justify-center lg:justify-start gap-3 px-5 py-3 rounded-full text-sm font-semibold transition-all cursor-pointer ${
+                      active
+                        ? 'smara-nav-active text-white'
+                        : 'text-sky-100/80 hover:bg-white/10 hover:text-white border border-transparent'
                     }`}
                   >
-                    {stats.selisihBep >= 0 ? 'LAYAK & PROFIT HARI INI' : 'BELUM MENUTUP BIAYA HARIAN'}
-                  </span>
-                </div>
-
-                <div className="p-4 rounded-xl bg-[#FAF6F1] border border-[#EADFD5] space-y-3">
-                  <div className="flex justify-between text-sm font-semibold">
-                    <span>Simulasi Terjual: {targetCupHarian} Cup / Hari</span>
-                    <span className="text-amber-700">Minimal BEP: {stats.minCupBep} Cup / Hari</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="150"
-                    value={targetCupHarian}
-                    onChange={(e) => setTargetCupHarian(Number(e.target.value))}
-                    className="w-full accent-amber-600 cursor-pointer"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                  <div className="p-4 rounded-xl bg-[#FAF6F1]">
-                    <p className="text-xs text-[#7A6355]">Estimasi Profit Kotor/Hari</p>
-                    <p className="text-lg font-bold text-[#231710] mt-1">{formatRupiah(stats.estimasiProfitHarian)}</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-[#FAF6F1]">
-                    <p className="text-xs text-[#7A6355]">Beban Operasional/Hari</p>
-                    <p className="text-lg font-bold text-rose-600 mt-1">- {formatRupiah(stats.totalOpsHarian)}</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-[#FAF6F1]">
-                    <p className="text-xs text-[#7A6355]">Net Profit Bersih/Hari</p>
-                    <p className={`text-lg font-bold mt-1 ${stats.selisihBep >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {formatRupiah(stats.selisihBep)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white p-6 rounded-2xl border border-[#EADFD5] shadow-sm space-y-4">
-                <h3 className="font-bold text-lg text-[#231710]">HPP vs Harga Jual</h3>
-                <div className="space-y-4">
-                  {menuEnriched.map((m) => {
-                    const hppRatio = m.hargaJual > 0 ? Math.min(100, (m.totalHpp / m.hargaJual) * 100) : 0;
-                    return (
-                      <div key={m.id} className="space-y-1.5">
-                        <div className="flex justify-between text-xs font-semibold">
-                          <span>{m.nama_produk}</span>
-                          <span className="text-emerald-700">+{m.marginPct.toFixed(0)}% Margin</span>
-                        </div>
-                        <div className="w-full h-3 bg-emerald-100 rounded-full overflow-hidden flex">
-                          <div style={{ width: `${hppRatio}%` }} className="bg-amber-700 h-full" title="Porsi HPP" />
-                        </div>
-                        <div className="flex justify-between text-[11px] text-[#7A6355]">
-                          <span>HPP: {formatRupiah(m.totalHpp)}</span>
-                          <span>Jual: {formatRupiah(m.hargaJual)}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================= TAB 2: MASTER BAHAN BAKU ================= */}
-        {activeTab === 'bahan' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-[#231710]">Master Bahan Baku</h2>
-              <p className="text-sm text-[#7A6355]">Setiap bahan baku memiliki Random Key ID unik dan menghitung harga per satuan secara otomatis.</p>
-            </div>
-
-            {isAdmin && (
-              <form onSubmit={handleSaveBahan} className="bg-white p-6 rounded-2xl border border-[#EADFD5] shadow-sm grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-                <div>
-                  <label className="block text-xs font-semibold text-[#7A6355] mb-1">Random Key ID</label>
-                  <input
-                    type="text"
-                    readOnly
-                    value={editingBahanId || newBahan.id}
-                    className="w-full px-3 py-2.5 rounded-xl bg-[#FAF6F1] border border-[#EADFD5] text-xs font-mono font-bold text-amber-800"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-semibold text-[#7A6355] mb-1">Nama Bahan Baku</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Susu UHT Full Cream"
-                    value={newBahan.nama_bahan}
-                    onChange={(e) => setNewBahan({ ...newBahan, nama_bahan: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-[#EADFD5] text-sm focus:outline-amber-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#7A6355] mb-1">Ukuran Kemasan</label>
-                  <div className="flex gap-1">
-                    <input
-                      type="number"
-                      step="any"
-                      required
-                      placeholder="1000"
-                      value={newBahan.ukuran_kemasan}
-                      onChange={(e) => setNewBahan({ ...newBahan, ukuran_kemasan: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
-                    />
-                    <select
-                      value={newBahan.satuan}
-                      onChange={(e) => setNewBahan({ ...newBahan, satuan: e.target.value })}
-                      className="px-2 py-2 rounded-xl border border-[#EADFD5] text-sm bg-white"
-                    >
-                      <option value="gr">gr</option>
-                      <option value="ml">ml</option>
-                      <option value="Pcs">Pcs</option>
-                      <option value="cup">cup</option>
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#7A6355] mb-1">Harga Beli (Rp)</label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="25000"
-                    value={newBahan.harga_beli}
-                    onChange={(e) => setNewBahan({ ...newBahan, harga_beli: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-1.5 transition"
-                  >
-                    <Plus className="w-4 h-4" /> {editingBahanId ? 'Update' : 'Simpan'}
+                    <Icon className={`w-4 h-4 ${active ? 'text-sky-200' : 'text-sky-300/70'}`} />
+                    <span>{item.label}</span>
                   </button>
-                  {editingBahanId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingBahanId(null);
-                        setNewBahan({ id: generateRandomBahanId(), nama_bahan: '', ukuran_kemasan: '', satuan: 'gr', harga_beli: '' });
-                      }}
-                      className="px-3 py-2.5 rounded-xl bg-gray-200 text-gray-700 text-sm"
-                    >
-                      Batal
-                    </button>
+                );
+              })}
+            </nav>
+
+            <div className="mt-8 pt-5 border-t border-white/15 space-y-3">
+              <div className="p-3.5 rounded-2xl bg-[#041226]/45 border border-white/15 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-white font-bold text-xs truncate">{user.username}</span>
+                  {isAdmin ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/30 text-emerald-200 text-[10px] font-bold shrink-0">
+                      <ShieldCheck className="w-3 h-3" /> ADMIN
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-400/20 border border-sky-300/30 text-sky-200 text-[10px] font-bold shrink-0">
+                      <Eye className="w-3 h-3" /> VIEWER
+                    </span>
                   )}
                 </div>
-              </form>
+                <p className="text-[11px] text-sky-200/70 flex items-center gap-1.5">
+                  <Database className="w-3 h-3 text-sky-300" /> TiDB Cloud Live
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={fetchAllData}
+                  disabled={loading}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-sky-100 text-xs font-semibold transition cursor-pointer disabled:opacity-60"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  {loading ? 'Sync...' : 'Sync'}
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-3.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 border border-rose-300/25 text-rose-100 text-xs font-semibold transition cursor-pointer"
+                  title="Keluar"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Keluar
+                </button>
+              </div>
+            </div>
+          </aside>
+
+          <main className="flex-1 w-full min-w-0 space-y-5">
+            {!isAdmin && (
+              <div className="smara-glass-soft px-4 py-3 rounded-2xl text-sky-100 flex items-center gap-2.5 text-xs">
+                <Eye className="w-4 h-4 text-sky-300 shrink-0" />
+                <span>
+                  Anda login dengan akun <strong>View-Only ({user.username})</strong>. Anda dapat memantau kalkulasi HPP, menu, dan BEP tanpa akses ubah data.
+                </span>
+              </div>
             )}
 
-            <div className="bg-white rounded-2xl border border-[#EADFD5] shadow-sm overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[#FAF6F1] border-b border-[#EADFD5] text-xs uppercase text-[#7A6355]">
-                    <th className="p-4">Key ID</th>
-                    <th className="p-4">Nama Bahan</th>
-                    <th className="p-4">Kemasan</th>
-                    <th className="p-4">Harga Beli</th>
-                    <th className="p-4">Harga / Satuan</th>
-                    {isAdmin && <th className="p-4 text-right">Aksi</th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EADFD5] text-sm">
-                  {bahanBaku.map((b) => {
-                    const unitPrice = Number(b.harga_beli) / Number(b.ukuran_kemasan);
-                    return (
-                      <tr key={b.id} className="hover:bg-[#FAF6F1]/60">
-                        <td className="p-4 font-mono text-xs font-bold text-amber-800">{b.id}</td>
-                        <td className="p-4 font-semibold">{b.nama_bahan}</td>
-                        <td className="p-4">{Number(b.ukuran_kemasan)} {b.satuan}</td>
-                        <td className="p-4">{formatRupiah(b.harga_beli)}</td>
-                        <td className="p-4 font-semibold text-emerald-700">
-                          {formatRupiah(unitPrice)} / {b.satuan}
-                        </td>
-                        {isAdmin && (
-                          <td className="p-4 text-right space-x-2">
-                            <button
-                              onClick={() => {
-                                setEditingBahanId(b.id);
-                                setNewBahan({
-                                  id: b.id,
-                                  nama_bahan: b.nama_bahan,
-                                  ukuran_kemasan: String(b.ukuran_kemasan),
-                                  satuan: b.satuan,
-                                  harga_beli: String(b.harga_beli),
-                                });
-                              }}
-                              className="p-2 rounded-lg text-amber-700 hover:bg-amber-50"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm(`Hapus bahan ${b.nama_bahan}?`)) sendAction('DELETE_BAHAN', { id: b.id });
-                              }}
-                              className="p-2 rounded-lg text-rose-600 hover:bg-rose-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ================= TAB 3: MENU (2 LAYER) ================= */}
-        {activeTab === 'menu' && (
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-2xl font-bold text-[#231710]">Manajemen Menu & Racikan HPP</h2>
-              <p className="text-sm text-[#7A6355]">
-                {isAdmin
-                  ? 'Layer 1 menampilkan daftar menu tersimpan di database; Layer 2 untuk meracik dan mengelola menu.'
-                  : 'Daftar seluruh menu beserta komposisi HPP dan margin keuntungan kedai.'}
-              </p>
-            </div>
-
-            {/* LAYER 1: LIST MENU TERSIMPAN DI DATABASE */}
-            <section className="bg-white rounded-2xl border border-[#EADFD5] shadow-sm overflow-hidden">
-              <div className="p-5 bg-[#231710] text-white flex items-center justify-between">
+            {errorMsg && (
+              <div className="smara-glass p-4 rounded-2xl border-rose-400/40 bg-rose-950/50 text-rose-100 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-rose-300 shrink-0" />
                 <div>
-                  <span className="text-[11px] uppercase tracking-wider text-amber-400 font-bold">Layer 1</span>
-                  <h3 className="font-bold text-lg">Daftar Menu Tersedia ({menuEnriched.length})</h3>
+                  <p className="font-semibold text-sm">Koneksi Database Bermasalah</p>
+                  <p className="text-xs opacity-90">{errorMsg}</p>
                 </div>
               </div>
+            )}
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-[#FAF6F1] border-b border-[#EADFD5] text-xs uppercase text-[#7A6355]">
-                      <th className="p-4">Nama Menu</th>
-                      <th className="p-4">Komposisi Bahan</th>
-                      <th className="p-4">Total HPP</th>
-                      <th className="p-4">Harga Jual</th>
-                      <th className="p-4">Profit & Margin</th>
-                      {isAdmin && <th className="p-4 text-right">Aksi</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#EADFD5] text-sm">
-                    {menuEnriched.map((m) => (
-                      <tr key={m.id} className="hover:bg-[#FAF6F1]/50 align-top">
-                        <td className="p-4 font-bold text-[#231710]">{m.nama_produk}</td>
-                        <td className="p-4">
-                          <div className="flex flex-wrap gap-1.5">
-                            {m.resep.map((r, idx) => {
-                              const b = bahanMap[r.bahan_baku_id];
-                              return (
-                                <span
-                                  key={idx}
-                                  className="px-2.5 py-1 rounded-lg bg-[#FAF6F1] border border-[#EADFD5] text-xs text-[#4A372B]"
-                                >
-                                  {b ? b.nama_bahan : r.bahan_baku_id} ({Number(r.jumlah_pemakaian)} {r.satuan_pemakaian})
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </td>
-                        <td className="p-4 font-semibold text-amber-800">{formatRupiah(m.totalHpp)}</td>
-                        <td className="p-4 font-bold text-[#231710]">{formatRupiah(m.hargaJual)}</td>
-                        <td className="p-4">
-                          <div className="font-bold text-emerald-700">+{formatRupiah(m.profit)}</div>
-                          <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-bold">
-                            Margin {m.marginPct.toFixed(2)}% dari HPP
-                          </span>
-                        </td>
-                        {isAdmin && (
-                          <td className="p-4 text-right space-x-2 whitespace-nowrap">
-                            <button
-                              onClick={() => startEditMenu(m)}
-                              className="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-semibold inline-flex items-center gap-1"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" /> Edit
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm(`Hapus menu ${m.nama_produk}?`)) sendAction('DELETE_MENU', { id: m.id });
-                              }}
-                              className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold inline-flex items-center gap-1"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" /> Hapus
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            {/* LAYER 2: CRUD MENU (KHUSUS FULL ADMIN) */}
-            {isAdmin && (
-              <section id="layer-crud-menu" className="bg-white rounded-2xl border border-[#EADFD5] shadow-sm p-6 space-y-6">
-                <div className="flex items-center justify-between border-b border-[#EADFD5] pb-4">
-                  <div>
-                    <span className="text-[11px] uppercase tracking-wider text-amber-600 font-bold">Layer 2 • Form CRUD Menu</span>
-                    <h3 className="font-bold text-xl text-[#231710]">
-                      {editingMenuId ? `Edit Menu: ${menuForm.nama_produk}` : 'Tambah Menu & Racikan Baru'}
-                    </h3>
+            {activeTab === 'dashboard' && (
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="smara-glass rounded-3xl p-5 flex flex-col justify-between min-h-[138px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-white/95">Harga rerata menu</span>
+                      <Coffee className="w-4 h-4 text-sky-300" />
+                    </div>
+                    <div className="mt-3">
+                      <p className="text-2xl sm:text-[26px] font-bold text-white tracking-tight">
+                        {formatRupiah(stats.avgHargaJual)}
+                      </p>
+                      <p className="text-xs text-sky-200/80 mt-1">
+                        Dari {menuEnriched.length} menu aktif di database
+                      </p>
+                    </div>
                   </div>
-                  {editingMenuId && (
-                    <button
-                      onClick={() => {
-                        setEditingMenuId(null);
-                        setMenuForm({ nama_produk: '', harga_jual: '', resep: [] });
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-semibold flex items-center gap-1"
-                    >
-                      <X className="w-4 h-4" /> Batal Edit
-                    </button>
-                  )}
+
+                  <div className="smara-glass rounded-3xl p-5 flex flex-col justify-between min-h-[138px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-white/95">Biaya operasional</span>
+                      <Receipt className="w-4 h-4 text-sky-300" />
+                    </div>
+                    <div className="mt-3">
+                      <p className="text-2xl sm:text-[26px] font-bold text-white tracking-tight">
+                        {formatRupiah(stats.totalOpsBulanan)}
+                      </p>
+                      <p className="text-xs text-sky-200/80 mt-1">
+                        Harian: {formatRupiah(stats.totalOpsHarian)}/hari • Aset: {formatRupiah(stats.totalInventaris)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="smara-glass rounded-3xl p-5 flex flex-col justify-between min-h-[138px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-white/95">Margin rerata</span>
+                      <Percent className="w-4 h-4 text-emerald-300" />
+                    </div>
+                    <div className="mt-3">
+                      <p className="text-2xl sm:text-[26px] font-bold text-emerald-300 tracking-tight">
+                        +{stats.avgMarginPct.toFixed(1)}%
+                      </p>
+                      <p className="text-xs text-sky-200/80 mt-1">
+                        Profit rerata: {formatRupiah(stats.avgProfitCup)} / cup
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <form onSubmit={handleSaveMenu} className="space-y-6">
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-[#7A6355] mb-2">
-                      1. Nama Produk / Menu
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Contoh: Kopi Susu Gula Aren"
-                      value={menuForm.nama_produk}
-                      onChange={(e) => setMenuForm({ ...menuForm, nama_produk: e.target.value })}
-                      className="w-full md:w-1/2 px-4 py-3 rounded-xl border border-[#EADFD5] text-sm font-semibold focus:outline-amber-600"
-                    />
-                  </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                  <div className="lg:col-span-2 smara-glass rounded-3xl p-6 flex flex-col justify-between space-y-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                          Minimal BEP 1 hari :
+                          <span className="text-sky-300">{stats.minCupBep} Cup</span>
+                        </h2>
+                        <p className="text-xs font-semibold text-sky-100/90 mt-2">
+                          Simulator Break-Even Point (BEP) Harian
+                        </p>
+                        <p className="text-xs text-sky-200/75 mt-0.5">
+                          Geser target penjualan cup per hari untuk menguji kelayakan profit kedai.
+                        </p>
+                      </div>
+                      <span
+                        className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold border ${
+                          stats.selisihBep >= 0
+                            ? 'bg-emerald-400/20 text-emerald-200 border-emerald-300/40'
+                            : 'bg-rose-400/20 text-rose-200 border-rose-300/40'
+                        }`}
+                      >
+                        {stats.selisihBep >= 0 ? 'LAYAK & PROFIT HARI INI' : 'BELUM MENUTUP BIAYA HARIAN'}
+                      </span>
+                    </div>
 
-                  <div className="p-5 rounded-2xl bg-[#FAF6F1] border border-[#EADFD5] space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-[#7A6355]">
-                        2. Komposisi Bahan Baku & Akumulasi HPP
-                      </label>
-                      <div className="px-4 py-1.5 rounded-xl bg-amber-900 text-amber-100 text-xs font-bold">
-                        Subtotal HPP Terkini: {formatRupiah(draftMenuCalc.subtotalHpp)}
+                    <div className="smara-glass-soft p-4 rounded-2xl space-y-3">
+                      <div className="flex justify-between text-xs sm:text-sm font-semibold">
+                        <span className="text-white">Simulasi Terjual: {targetCupHarian} Cup / Hari</span>
+                        <span className="text-sky-300">Target BEP: {stats.minCupBep} Cup</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="1"
+                        max="150"
+                        value={targetCupHarian}
+                        onChange={(e) => setTargetCupHarian(Number(e.target.value))}
+                        className="w-full accent-sky-300 cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                      <div className="smara-glass-soft p-4 rounded-2xl">
+                        <p className="text-[11px] text-sky-200/80">Profit Kotor / Hari</p>
+                        <p className="text-lg font-bold text-white mt-1">
+                          {formatRupiah(stats.estimasiProfitHarian)}
+                        </p>
+                      </div>
+                      <div className="smara-glass-soft p-4 rounded-2xl">
+                        <p className="text-[11px] text-sky-200/80">Beban Operasional / Hari</p>
+                        <p className="text-lg font-bold text-rose-300 mt-1">
+                          - {formatRupiah(stats.totalOpsHarian)}
+                        </p>
+                      </div>
+                      <div className="smara-glass-soft p-4 rounded-2xl">
+                        <p className="text-[11px] text-sky-200/80">Net Profit Bersih / Hari</p>
+                        <p
+                          className={`text-lg font-bold mt-1 ${
+                            stats.selisihBep >= 0 ? 'text-emerald-300' : 'text-rose-300'
+                          }`}
+                        >
+                          {formatRupiah(stats.selisihBep)}
+                        </p>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="w-full h-2.5 bg-[#EADFD5] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-amber-500 to-amber-700 transition-all duration-300"
-                        style={{
-                          width: `${
-                            draftMenuCalc.hargaJualNum > 0
-                              ? Math.min(100, (draftMenuCalc.subtotalHpp / draftMenuCalc.hargaJualNum) * 100)
-                              : menuForm.resep.length > 0
-                              ? Math.min(100, menuForm.resep.length * 20)
-                              : 0
-                          }%`,
-                        }}
-                      />
+                  <div className="smara-glass rounded-3xl p-5 flex flex-col max-h-[395px]">
+                    <div className="flex items-center justify-between pb-3 border-b border-white/15">
+                      <h3 className="font-bold text-base text-white">Menu List</h3>
+                      <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-white/10 text-sky-200 font-semibold">
+                        {menuEnriched.length} Item
+                      </span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                      <select
-                        value={selectedBahanInput}
-                        onChange={(e) => setSelectedBahanInput(e.target.value)}
-                        className="md:col-span-2 px-3 py-2.5 rounded-xl border border-[#EADFD5] bg-white text-sm"
-                      >
-                        <option value="">-- Pilih Bahan Baku --</option>
-                        {bahanBaku.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.nama_bahan} ({formatRupiah(Number(b.harga_beli) / Number(b.ukuran_kemasan))}/{b.satuan})
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        step="any"
-                        placeholder="Takaran (gr / ml / pcs)"
-                        value={jumlahPemakaianInput}
-                        onChange={(e) => setJumlahPemakaianInput(e.target.value)}
-                        className="px-3 py-2.5 rounded-xl border border-[#EADFD5] bg-white text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddBahanToDraft}
-                        className="bg-[#231710] hover:bg-[#3A271C] text-white font-semibold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-1.5"
-                      >
-                        <Plus className="w-4 h-4" /> Tambah Bahan
-                      </button>
-                    </div>
-
-                    {menuForm.resep.length > 0 && (
-                      <div className="divide-y divide-[#EADFD5] bg-white rounded-xl border border-[#EADFD5] px-4">
-                        {menuForm.resep.map((item, idx) => {
-                          const b = bahanMap[item.bahan_baku_id];
-                          const cost = b ? Number(item.jumlah_pemakaian) * b.harga_per_unit : 0;
+                    <div className="mt-3 space-y-3 overflow-y-auto pr-2 smara-scroll flex-1">
+                      {menuEnriched.length === 0 ? (
+                        <p className="text-xs text-sky-200/70 text-center py-8">Belum ada menu tersimpan.</p>
+                      ) : (
+                        menuEnriched.map((m) => {
+                          const hppRatio = m.hargaJual > 0 ? Math.min(100, (m.totalHpp / m.hargaJual) * 100) : 0;
                           return (
-                            <div key={idx} className="py-3 flex items-center justify-between text-sm">
-                              <div>
-                                <span className="font-semibold">{b ? b.nama_bahan : item.bahan_baku_id}</span>
-                                <span className="text-xs text-[#7A6355] ml-2">
-                                  ({item.jumlah_pemakaian} {item.satuan_pemakaian})
-                                </span>
+                            <div key={m.id} className="smara-glass-soft p-3.5 rounded-2xl space-y-2">
+                              <div className="flex justify-between items-start gap-2 text-xs font-semibold">
+                                <span className="text-white leading-snug">{m.nama_produk}</span>
+                                <span className="text-emerald-300 shrink-0">+{m.marginPct.toFixed(0)}%</span>
                               </div>
-                              <div className="flex items-center gap-4">
-                                <span className="font-semibold text-amber-800">{formatRupiah(cost)}</span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setMenuForm({
-                                      ...menuForm,
-                                      resep: menuForm.resep.filter((_, i) => i !== idx),
-                                    })
-                                  }
-                                  className="text-rose-600 hover:text-rose-800"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                              <div className="w-full h-2 bg-emerald-400/25 rounded-full overflow-hidden">
+                                <div
+                                  style={{ width: `${hppRatio}%` }}
+                                  className="bg-sky-300 h-full rounded-full"
+                                  title="Porsi HPP"
+                                />
+                              </div>
+                              <div className="flex justify-between text-[11px] text-sky-200/80">
+                                <span>HPP: {formatRupiah(m.totalHpp)}</span>
+                                <span className="text-white font-semibold">Jual: {formatRupiah(m.hargaJual)}</span>
                               </div>
                             </div>
                           );
-                        })}
-                      </div>
-                    )}
+                        })
+                      )}
+                    </div>
                   </div>
+                </div>
+              </div>
+            )}
 
-                  <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-amber-50/40 border border-emerald-200 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+            {activeTab === 'bahan' && (
+              <div className="space-y-5">
+                <div className="smara-glass rounded-3xl p-5 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Master Bahan Baku</h2>
+                    <p className="text-xs text-sky-200/80 mt-0.5">
+                      Kelola stok harga kemasan &amp; kalkulasi otomatis harga per satuan.
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-semibold text-sky-200">
+                    Total {bahanBaku.length} Bahan
+                  </span>
+                </div>
+
+                {isAdmin && (
+                  <form
+                    onSubmit={handleSaveBahan}
+                    className="smara-glass p-5 rounded-3xl grid grid-cols-1 md:grid-cols-6 gap-3.5 items-end"
+                  >
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-emerald-900 mb-2">
-                        3. Tentukan Harga Jual (Rp)
-                      </label>
+                      <label className="block text-[11px] font-semibold text-sky-200/90 mb-1.5">Key ID</label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={editingBahanId || newBahan.id}
+                        className="w-full px-3 py-2.5 rounded-xl smara-input text-xs font-mono font-bold text-sky-300 opacity-85"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[11px] font-semibold text-sky-200/90 mb-1.5">Nama Bahan Baku</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Contoh: Susu UHT Full Cream"
+                        value={newBahan.nama_bahan}
+                        onChange={(e) => setNewBahan({ ...newBahan, nama_bahan: e.target.value })}
+                        className="w-full px-3 py-2.5 rounded-xl smara-input text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-sky-200/90 mb-1.5">Kemasan</label>
+                      <div className="flex gap-1.5">
+                        <input
+                          type="number"
+                          step="any"
+                          required
+                          placeholder="1000"
+                          value={newBahan.ukuran_kemasan}
+                          onChange={(e) => setNewBahan({ ...newBahan, ukuran_kemasan: e.target.value })}
+                          className="w-full px-3 py-2.5 rounded-xl smara-input text-sm"
+                        />
+                        <select
+                          value={newBahan.satuan}
+                          onChange={(e) => setNewBahan({ ...newBahan, satuan: e.target.value })}
+                          className="px-2 py-2.5 rounded-xl smara-input text-sm"
+                        >
+                          <option value="gr">gr</option>
+                          <option value="ml">ml</option>
+                          <option value="Pcs">Pcs</option>
+                          <option value="cup">cup</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-sky-200/90 mb-1.5">Harga Beli (Rp)</label>
                       <input
                         type="number"
                         required
-                        placeholder="Contoh: 15000"
-                        value={menuForm.harga_jual}
-                        onChange={(e) => setMenuForm({ ...menuForm, harga_jual: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-emerald-300 bg-white text-base font-bold text-[#231710] focus:outline-emerald-600"
+                        placeholder="25000"
+                        value={newBahan.harga_beli}
+                        onChange={(e) => setNewBahan({ ...newBahan, harga_beli: e.target.value })}
+                        className="w-full px-3 py-2.5 rounded-xl smara-input text-sm"
                       />
                     </div>
-
-                    <div className="bg-white p-4 rounded-xl border border-emerald-200">
-                      <p className="text-xs text-[#7A6355]">Profit Kotor per Cup</p>
-                      <p className={`text-xl font-bold mt-0.5 ${draftMenuCalc.profit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
-                        {formatRupiah(draftMenuCalc.profit)}
-                      </p>
-                      <p className="text-[11px] text-[#7A6355] mt-0.5">
-                        Harga Jual - Total HPP ({formatRupiah(draftMenuCalc.subtotalHpp)})
-                      </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="flex-1 bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 disabled:opacity-60 text-[#041226] font-bold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+                      >
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                        {editingBahanId ? 'Update' : 'Simpan'}
+                      </button>
+                      {editingBahanId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingBahanId(null);
+                            setNewBahan({
+                              id: generateRandomBahanId(),
+                              nama_bahan: '',
+                              ukuran_kemasan: '',
+                              satuan: 'gr',
+                              harga_beli: '',
+                            });
+                          }}
+                          className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold cursor-pointer"
+                        >
+                          Batal
+                        </button>
+                      )}
                     </div>
+                  </form>
+                )}
 
-                    <div className="bg-emerald-700 text-white p-4 rounded-xl shadow-sm">
-                      <p className="text-xs text-emerald-100">Persentase Margin dari HPP</p>
-                      <p className="text-2xl font-extrabold mt-0.5">
-                        {draftMenuCalc.marginFromHpp >= 0 ? '+' : ''}
-                        {draftMenuCalc.marginFromHpp.toFixed(2)}%
-                      </p>
-                      <p className="text-[11px] text-emerald-200 mt-0.5">Otomatis dihitung dari modal HPP</p>
-                    </div>
+                <div className="smara-glass rounded-3xl overflow-hidden">
+                  <div className="overflow-x-auto smara-scroll">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-white/10 border-b border-white/15 text-[11px] uppercase tracking-wider text-sky-200">
+                          <th className="p-4">Key ID</th>
+                          <th className="p-4">Nama Bahan</th>
+                          <th className="p-4">Kemasan</th>
+                          <th className="p-4">Harga Beli</th>
+                          <th className="p-4">Harga / Satuan</th>
+                          {isAdmin && <th className="p-4 text-right">Aksi</th>}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/10 text-sm">
+                        {bahanBaku.map((b) => {
+                          const unitPrice = Number(b.harga_beli) / Number(b.ukuran_kemasan);
+                          return (
+                            <tr key={b.id} className="hover:bg-white/5 transition">
+                              <td className="p-4 font-mono text-xs font-bold text-sky-300">{b.id}</td>
+                              <td className="p-4 font-semibold text-white">{b.nama_bahan}</td>
+                              <td className="p-4 text-sky-100">
+                                {Number(b.ukuran_kemasan)} {b.satuan}
+                              </td>
+                              <td className="p-4 text-sky-100">{formatRupiah(b.harga_beli)}</td>
+                              <td className="p-4 font-semibold text-emerald-300">
+                                {formatRupiah(unitPrice)} / {b.satuan}
+                              </td>
+                              {isAdmin && (
+                                <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
+                                  <button
+                                    disabled={saving}
+                                    onClick={() => {
+                                      setEditingBahanId(b.id);
+                                      setNewBahan({
+                                        id: b.id,
+                                        nama_bahan: b.nama_bahan,
+                                        ukuran_kemasan: String(b.ukuran_kemasan),
+                                        satuan: b.satuan,
+                                        harga_beli: String(b.harga_beli),
+                                      });
+                                    }}
+                                    className="p-2 rounded-xl bg-sky-400/15 hover:bg-sky-400/30 text-sky-200 transition cursor-pointer disabled:opacity-50"
+                                    title="Edit Bahan"
+                                  >
+                                    <Edit3 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    disabled={saving}
+                                    onClick={() => {
+                                      if (confirm(`Hapus bahan "${b.nama_bahan}"?`)) {
+                                        sendAction(
+                                          'DELETE_BAHAN',
+                                          { id: b.id },
+                                          `Menghapus bahan "${b.nama_bahan}"...`,
+                                          `Bahan "${b.nama_bahan}" berhasil dihapus.`
+                                        );
+                                      }
+                                    }}
+                                    className="p-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 text-rose-200 transition cursor-pointer disabled:opacity-50"
+                                    title="Hapus Bahan"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-8 rounded-xl shadow-md flex items-center gap-2 transition"
-                    >
-                      <Check className="w-5 h-5" />
-                      {editingMenuId ? 'Simpan Perubahan Menu' : 'Simpan Menu ke Database'}
-                    </button>
-                  </div>
-                </form>
-              </section>
+                </div>
+              </div>
             )}
-          </div>
-        )}
 
-        {/* ================= TAB 4: OPERASIONAL & INVENTARIS ================= */}
-        {activeTab === 'operasional' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-2xl border border-[#EADFD5] shadow-sm space-y-4">
-              <h3 className="font-bold text-lg text-[#231710]">Biaya Operasional Bulanan</h3>
-              {isAdmin && (
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    const ok = await sendAction('ADD_OPERASIONAL', {
-                      ...newOps,
-                      biaya_bulanan: Number(newOps.biaya_bulanan),
-                    });
-                    if (ok) setNewOps({ nama_kebutuhan: '', periode: '1 Bulan', biaya_bulanan: '', catatan: '' });
-                  }}
-                  className="grid grid-cols-1 sm:grid-cols-3 gap-2"
-                >
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nama kebutuhan"
-                    value={newOps.nama_kebutuhan}
-                    onChange={(e) => setNewOps({ ...newOps, nama_kebutuhan: e.target.value })}
-                    className="px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
-                  />
-                  <input
-                    type="number"
-                    required
-                    placeholder="Biaya/bulan (Rp)"
-                    value={newOps.biaya_bulanan}
-                    onChange={(e) => setNewOps({ ...newOps, biaya_bulanan: e.target.value })}
-                    className="px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
-                  />
-                  <button type="submit" className="bg-amber-600 text-white rounded-xl text-sm font-semibold py-2">
-                    + Tambah
-                  </button>
-                </form>
-              )}
-
-              <div className="divide-y divide-[#EADFD5]">
-                {operasional.map((o) => (
-                  <div key={o.id} className="py-3 flex items-center justify-between text-sm">
+            {activeTab === 'menu' && (
+              <div className="space-y-6">
+                <section className="smara-glass rounded-3xl overflow-hidden">
+                  <div className="p-5 bg-white/10 border-b border-white/15 flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <p className="font-semibold">{o.nama_kebutuhan}</p>
-                      <p className="text-xs text-[#7A6355]">{o.catatan || o.periode}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold">{formatRupiah(o.biaya_bulanan)}</span>
-                      {isAdmin && (
-                        <button
-                          onClick={() => sendAction('DELETE_OPERASIONAL', { id: o.id })}
-                          className="text-rose-600 hover:text-rose-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                      <span className="text-[11px] uppercase tracking-wider text-sky-300 font-bold">
+                        Layer 1 • Klik nama menu untuk detail HPP
+                      </span>
+                      <h2 className="font-bold text-lg text-white">Daftar Menu Tersedia ({menuEnriched.length})</h2>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            <div className="bg-white p-6 rounded-2xl border border-[#EADFD5] shadow-sm space-y-4">
-              <h3 className="font-bold text-lg text-[#231710]">Inventaris & Aset Awal</h3>
-              {isAdmin && (
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    const ok = await sendAction('ADD_INVENTARIS', {
-                      ...newInv,
-                      harga_barang: Number(newInv.harga_barang),
-                    });
-                    if (ok) setNewInv({ nama_barang: '', kondisi: 'Baru', harga_barang: '', status_kebutuhan: 'Terpenuhi' });
-                  }}
-                  className="grid grid-cols-1 sm:grid-cols-4 gap-2"
-                >
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nama barang"
-                    value={newInv.nama_barang}
-                    onChange={(e) => setNewInv({ ...newInv, nama_barang: e.target.value })}
-                    className="sm:col-span-2 px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
-                  />
-                  <input
-                    type="number"
-                    required
-                    placeholder="Harga (Rp)"
-                    value={newInv.harga_barang}
-                    onChange={(e) => setNewInv({ ...newInv, harga_barang: e.target.value })}
-                    className="px-3 py-2 rounded-xl border border-[#EADFD5] text-sm"
-                  />
-                  <button type="submit" className="bg-amber-600 text-white rounded-xl text-sm font-semibold py-2">
-                    + Tambah
-                  </button>
-                </form>
-              )}
+                  <div className="grid grid-cols-12 items-center px-5 py-3 bg-white/5 border-b border-white/15 text-[11px] uppercase tracking-wider text-sky-200 font-bold">
+                    <div className="col-span-2 sm:col-span-1">No</div>
+                    <div className={isAdmin ? 'col-span-6 sm:col-span-8' : 'col-span-10 sm:col-span-11'}>Nama Menu</div>
+                    {isAdmin && <div className="col-span-4 sm:col-span-3 text-right">Aksi</div>}
+                  </div>
 
-              <div className="divide-y divide-[#EADFD5]">
-                {inventaris.map((inv) => (
-                  <div key={inv.id} className="py-3 flex items-center justify-between text-sm">
-                    <div>
-                      <p className="font-semibold">{inv.nama_barang}</p>
-                      <span className="text-xs px-2 py-0.5 rounded bg-[#FAF6F1] text-[#7A6355]">{inv.kondisi}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold">{formatRupiah(inv.harga_barang)}</span>
-                      {isAdmin ? (
-                        <button
-                          onClick={() =>
-                            sendAction('TOGGLE_INVENTARIS', {
-                              id: inv.id,
-                              status_kebutuhan: inv.status_kebutuhan === 'Terpenuhi' ? 'Belum Terpenuhi' : 'Terpenuhi',
-                            })
-                          }
-                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                            inv.status_kebutuhan === 'Terpenuhi'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {inv.status_kebutuhan}
-                        </button>
-                      ) : (
-                        <span
-                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                            inv.status_kebutuhan === 'Terpenuhi'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {inv.status_kebutuhan}
+                  <div className="divide-y divide-white/10">
+                    {menuEnriched.length === 0 ? (
+                      <div className="p-8 text-center text-sm text-sky-200/75">Belum ada menu tersimpan di database.</div>
+                    ) : (
+                      menuEnriched.map((m, index) => {
+                        const isOpen = expandedMenuIds.includes(m.id);
+                        return (
+                          <div key={m.id} className="transition">
+                            <div className="grid grid-cols-12 items-center px-5 py-4 hover:bg-white/5 transition gap-2">
+                              <div className="col-span-2 sm:col-span-1 text-sm font-mono text-sky-300 font-bold">
+                                {index + 1}
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => toggleMenuDropdown(m.id)}
+                                className={`${
+                                  isAdmin ? 'col-span-6 sm:col-span-8' : 'col-span-10 sm:col-span-11'
+                                } flex items-center justify-between text-left gap-3 group cursor-pointer`}
+                              >
+                                <span className="font-bold text-white group-hover:text-sky-200 transition text-sm sm:text-base">
+                                  {m.nama_produk}
+                                </span>
+                                <span className="inline-flex items-center gap-1 text-[11px] text-sky-300/90 px-2.5 py-1 rounded-full bg-white/10 border border-white/15 shrink-0">
+                                  <span className="hidden sm:inline">{isOpen ? 'Tutup' : 'Detail'}</span>
+                                  {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                </span>
+                              </button>
+
+                              {isAdmin && (
+                                <div className="col-span-4 sm:col-span-3 flex items-center justify-end gap-1.5">
+                                  <button
+                                    disabled={saving}
+                                    onClick={() => startEditMenu(m)}
+                                    className="px-3 py-1.5 rounded-xl bg-sky-400/20 hover:bg-sky-400/35 border border-sky-300/25 text-sky-100 text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">Edit</span>
+                                  </button>
+                                  <button
+                                    disabled={saving}
+                                    onClick={() => {
+                                      if (confirm(`Hapus menu "${m.nama_produk}"?`)) {
+                                        sendAction(
+                                          'DELETE_MENU',
+                                          { id: m.id },
+                                          `Menghapus menu "${m.nama_produk}"...`,
+                                          `Menu "${m.nama_produk}" berhasil dihapus.`
+                                        );
+                                      }
+                                    }}
+                                    className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 border border-rose-300/25 text-rose-100 text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">Hapus</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+
+                            {isOpen && (
+                              <div className="px-5 pb-5 pt-1 bg-[#041226]/35 border-t border-white/10 space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
+                                  <div className="smara-glass-soft p-3.5 rounded-2xl">
+                                    <p className="text-[11px] uppercase tracking-wider text-sky-200/80">Total HPP</p>
+                                    <p className="text-base font-bold text-sky-200 mt-1">{formatRupiah(m.totalHpp)}</p>
+                                  </div>
+                                  <div className="smara-glass-soft p-3.5 rounded-2xl">
+                                    <p className="text-[11px] uppercase tracking-wider text-sky-200/80">Harga Jual</p>
+                                    <p className="text-base font-bold text-white mt-1">{formatRupiah(m.hargaJual)}</p>
+                                  </div>
+                                  <div className="smara-glass-soft p-3.5 rounded-2xl">
+                                    <p className="text-[11px] uppercase tracking-wider text-sky-200/80">Profit &amp; Margin</p>
+                                    <div className="flex items-center justify-between gap-2 mt-1">
+                                      <span className="text-base font-bold text-emerald-300">
+                                        +{formatRupiah(m.profit)}
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/35 text-emerald-200 text-[11px] font-bold">
+                                        {m.marginPct.toFixed(1)}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="smara-glass-soft p-4 rounded-2xl">
+                                  <p className="text-[11px] uppercase tracking-wider text-sky-200/80 font-bold mb-2.5">
+                                    Komposisi Bahan ({m.resep.length} item)
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {m.resep.map((r, idx) => {
+                                      const b = bahanMap[r.bahan_baku_id];
+                                      const cost = b ? Number(r.jumlah_pemakaian) * b.harga_per_unit : 0;
+                                      return (
+                                        <span
+                                          key={idx}
+                                          className="px-3 py-1.5 rounded-xl bg-[#092447]/70 border border-sky-300/25 text-xs text-sky-50 flex items-center gap-1.5"
+                                        >
+                                          <span className="font-semibold">{b ? b.nama_bahan : r.bahan_baku_id}</span>
+                                          <span className="text-sky-300">
+                                            ({Number(r.jumlah_pemakaian)} {r.satuan_pemakaian})
+                                          </span>
+                                          <span className="text-emerald-300/90 font-mono text-[11px]">
+                                            • {formatRupiah(cost)}
+                                          </span>
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </section>
+
+                {isAdmin && (
+                  <section id="layer-crud-menu" className="smara-glass rounded-3xl p-6 space-y-6">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/15 pb-4">
+                      <div>
+                        <span className="text-[11px] uppercase tracking-wider text-sky-300 font-bold">
+                          Layer 2 • Form Racikan Menu
                         </span>
-                      )}
-                      {isAdmin && (
+                        <h3 className="font-bold text-xl text-white">
+                          {editingMenuId ? `Edit Menu: ${menuForm.nama_produk}` : 'Tambah Menu & Racikan Baru'}
+                        </h3>
+                      </div>
+                      {editingMenuId && (
                         <button
-                          onClick={() => sendAction('DELETE_INVENTARIS', { id: inv.id })}
-                          className="text-rose-600 hover:text-rose-800"
+                          onClick={() => {
+                            setEditingMenuId(null);
+                            setMenuForm({ nama_produk: '', harga_jual: '', resep: [] });
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1 cursor-pointer"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <X className="w-4 h-4" /> Batal Edit
                         </button>
                       )}
                     </div>
-                  </div>
-                ))}
+
+                    <form onSubmit={handleSaveMenu} className="space-y-6">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-sky-200 mb-2">
+                          1. Nama Produk / Menu
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Contoh: Smara Aren Latte"
+                          value={menuForm.nama_produk}
+                          onChange={(e) => setMenuForm({ ...menuForm, nama_produk: e.target.value })}
+                          className="w-full md:w-1/2 px-4 py-3 rounded-xl smara-input text-sm font-semibold"
+                        />
+                      </div>
+
+                      <div className="smara-glass-soft p-5 rounded-2xl space-y-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <label className="text-xs font-bold uppercase tracking-wider text-sky-200">
+                            2. Komposisi Bahan Baku &amp; Akumulasi HPP
+                          </label>
+                          <div className="px-4 py-1.5 rounded-full bg-sky-400/20 border border-sky-300/35 text-sky-100 text-xs font-bold">
+                            Subtotal HPP: {formatRupiah(draftMenuCalc.subtotalHpp)}
+                          </div>
+                        </div>
+
+                        <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-sky-300 to-blue-400 transition-all duration-300"
+                            style={{
+                              width: `${
+                                draftMenuCalc.hargaJualNum > 0
+                                  ? Math.min(100, (draftMenuCalc.subtotalHpp / draftMenuCalc.hargaJualNum) * 100)
+                                  : menuForm.resep.length > 0
+                                  ? Math.min(100, menuForm.resep.length * 20)
+                                  : 0
+                              }%`,
+                            }}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                          <select
+                            value={selectedBahanInput}
+                            onChange={(e) => setSelectedBahanInput(e.target.value)}
+                            className="md:col-span-2 px-3 py-2.5 rounded-xl smara-input text-sm"
+                          >
+                            <option value="">-- Pilih Bahan Baku --</option>
+                            {bahanBaku.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.nama_bahan} ({formatRupiah(Number(b.harga_beli) / Number(b.ukuran_kemasan))}/{b.satuan})
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            step="any"
+                            placeholder="Takaran (gr / ml / pcs)"
+                            value={jumlahPemakaianInput}
+                            onChange={(e) => setJumlahPemakaianInput(e.target.value)}
+                            className="px-3 py-2.5 rounded-xl smara-input text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddBahanToDraft}
+                            className="bg-white/15 hover:bg-white/25 border border-white/25 text-white font-semibold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+                          >
+                            <Plus className="w-4 h-4" /> Tambah Bahan
+                          </button>
+                        </div>
+
+                        {menuForm.resep.length > 0 && (
+                          <div className="divide-y divide-white/10 bg-[#041226]/45 rounded-xl border border-white/15 px-4">
+                            {menuForm.resep.map((item, idx) => {
+                              const b = bahanMap[item.bahan_baku_id];
+                              const cost = b ? Number(item.jumlah_pemakaian) * b.harga_per_unit : 0;
+                              return (
+                                <div key={idx} className="py-3 flex items-center justify-between text-sm">
+                                  <div>
+                                    <span className="font-semibold text-white">
+                                      {b ? b.nama_bahan : item.bahan_baku_id}
+                                    </span>
+                                    <span className="text-xs text-sky-200/80 ml-2">
+                                      ({item.jumlah_pemakaian} {item.satuan_pemakaian})
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-4">
+                                    <span className="font-semibold text-sky-300">{formatRupiah(cost)}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setMenuForm({
+                                          ...menuForm,
+                                          resep: menuForm.resep.filter((_, i) => i !== idx),
+                                        })
+                                      }
+                                      className="text-rose-300 hover:text-rose-200 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="smara-glass-soft p-5 rounded-2xl border-emerald-300/25 grid grid-cols-1 md:grid-cols-3 gap-5 items-center">
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-sky-200 mb-2">
+                            3. Tentukan Harga Jual (Rp)
+                          </label>
+                          <input
+                            type="number"
+                            required
+                            placeholder="Contoh: 18000"
+                            value={menuForm.harga_jual}
+                            onChange={(e) => setMenuForm({ ...menuForm, harga_jual: e.target.value })}
+                            className="w-full px-4 py-3 rounded-xl smara-input text-base font-bold"
+                          />
+                        </div>
+
+                        <div className="p-4 rounded-xl bg-[#041226]/45 border border-white/15">
+                          <p className="text-xs text-sky-200/80">Profit Kotor per Cup</p>
+                          <p
+                            className={`text-xl font-bold mt-0.5 ${
+                              draftMenuCalc.profit >= 0 ? 'text-emerald-300' : 'text-rose-300'
+                            }`}
+                          >
+                            {formatRupiah(draftMenuCalc.profit)}
+                          </p>
+                          <p className="text-[11px] text-sky-200/70 mt-0.5">
+                            Harga Jual - HPP ({formatRupiah(draftMenuCalc.subtotalHpp)})
+                          </p>
+                        </div>
+
+                        <div className="p-4 rounded-xl bg-emerald-500/20 border border-emerald-300/35">
+                          <p className="text-xs text-emerald-100">Persentase Margin dari HPP</p>
+                          <p className="text-2xl font-extrabold text-emerald-300 mt-0.5">
+                            {draftMenuCalc.marginFromHpp >= 0 ? '+' : ''}
+                            {draftMenuCalc.marginFromHpp.toFixed(2)}%
+                          </p>
+                          <p className="text-[11px] text-emerald-100/80 mt-0.5">Otomatis dihitung dari modal HPP</p>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end">
+                        <button
+                          type="submit"
+                          disabled={saving}
+                          className="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 disabled:opacity-60 text-[#041226] font-bold py-3 px-8 rounded-xl shadow-lg shadow-sky-950/50 flex items-center gap-2 transition cursor-pointer"
+                        >
+                          {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+                          {editingMenuId ? 'Simpan Perubahan Menu' : 'Simpan Menu ke Database'}
+                        </button>
+                      </div>
+                    </form>
+                  </section>
+                )}
               </div>
-            </div>
-          </div>
-        )}
-      </main>
+            )}
+
+            {activeTab === 'operasional' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="smara-glass p-6 rounded-3xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-lg text-white">Biaya Operasional Bulanan</h3>
+                    <span className="text-xs font-bold text-sky-300">{formatRupiah(stats.totalOpsBulanan)}</span>
+                  </div>
+
+                  {isAdmin && (
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const ok = await sendAction(
+                          'ADD_OPERASIONAL',
+                          {
+                            ...newOps,
+                            biaya_bulanan: Number(newOps.biaya_bulanan),
+                          },
+                          'Menambahkan biaya operasional...',
+                          `Biaya "${newOps.nama_kebutuhan}" berhasil ditambahkan.`
+                        );
+                        if (ok) setNewOps({ nama_kebutuhan: '', periode: '1 Bulan', biaya_bulanan: '', catatan: '' });
+                      }}
+                      className="grid grid-cols-1 sm:grid-cols-3 gap-2"
+                    >
+                      <input
+                        type="text"
+                        required
+                        placeholder="Nama kebutuhan"
+                        value={newOps.nama_kebutuhan}
+                        onChange={(e) => setNewOps({ ...newOps, nama_kebutuhan: e.target.value })}
+                        className="px-3 py-2.5 rounded-xl smara-input text-sm"
+                      />
+                      <input
+                        type="number"
+                        required
+                        placeholder="Biaya/bulan (Rp)"
+                        value={newOps.biaya_bulanan}
+                        onChange={(e) => setNewOps({ ...newOps, biaya_bulanan: e.target.value })}
+                        className="px-3 py-2.5 rounded-xl smara-input text-sm"
+                      />
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 disabled:opacity-60 text-[#041226] rounded-xl text-sm font-bold py-2.5 flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : '+ Tambah'}
+                      </button>
+                    </form>
+                  )}
+
+                  <div className="divide-y divide-white/10">
+                    {operasional.map((o) => (
+                      <div key={o.id} className="py-3.5 flex items-center justify-between text-sm">
+                        <div>
+                          <p className="font-semibold text-white">{o.nama_kebutuhan}</p>
+                          <p className="text-xs text-sky-200/70">{o.catatan || o.periode}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-sky-200">{formatRupiah(o.biaya_bulanan)}</span>
+                          {isAdmin && (
+                            <button
+                              disabled={saving}
+                              onClick={() => {
+                                if (confirm(`Hapus biaya "${o.nama_kebutuhan}"?`)) {
+                                  sendAction(
+                                    'DELETE_OPERASIONAL',
+                                    { id: o.id },
+                                    'Menghapus biaya operasional...',
+                                    `Biaya "${o.nama_kebutuhan}" dihapus.`
+                                  );
+                                }
+                              }}
+                              className="p-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 text-rose-200 cursor-pointer disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="smara-glass p-6 rounded-3xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-lg text-white">Inventaris &amp; Aset Awal</h3>
+                    <span className="text-xs font-bold text-sky-300">{formatRupiah(stats.totalInventaris)}</span>
+                  </div>
+
+                  {isAdmin && (
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const ok = await sendAction(
+                          'ADD_INVENTARIS',
+                          {
+                            ...newInv,
+                            harga_barang: Number(newInv.harga_barang),
+                          },
+                          'Menambahkan aset inventaris...',
+                          `Inventaris "${newInv.nama_barang}" berhasil ditambahkan.`
+                        );
+                        if (ok) {
+                          setNewInv({ nama_barang: '', kondisi: 'Baru', harga_barang: '', status_kebutuhan: 'Terpenuhi' });
+                        }
+                      }}
+                      className="grid grid-cols-1 sm:grid-cols-4 gap-2"
+                    >
+                      <input
+                        type="text"
+                        required
+                        placeholder="Nama barang"
+                        value={newInv.nama_barang}
+                        onChange={(e) => setNewInv({ ...newInv, nama_barang: e.target.value })}
+                        className="sm:col-span-2 px-3 py-2.5 rounded-xl smara-input text-sm"
+                      />
+                      <input
+                        type="number"
+                        required
+                        placeholder="Harga (Rp)"
+                        value={newInv.harga_barang}
+                        onChange={(e) => setNewInv({ ...newInv, harga_barang: e.target.value })}
+                        className="px-3 py-2.5 rounded-xl smara-input text-sm"
+                      />
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 disabled:opacity-60 text-[#041226] rounded-xl text-sm font-bold py-2.5 flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : '+ Tambah'}
+                      </button>
+                    </form>
+                  )}
+
+                  <div className="divide-y divide-white/10">
+                    {inventaris.map((inv) => (
+                      <div key={inv.id} className="py-3.5 flex items-center justify-between gap-2 text-sm">
+                        <div>
+                          <p className="font-semibold text-white">{inv.nama_barang}</p>
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-sky-200">
+                            {inv.kondisi}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <span className="font-bold text-sky-200">{formatRupiah(inv.harga_barang)}</span>
+                          {isAdmin ? (
+                            <button
+                              disabled={saving}
+                              onClick={() =>
+                                sendAction(
+                                  'TOGGLE_INVENTARIS',
+                                  {
+                                    id: inv.id,
+                                    status_kebutuhan:
+                                      inv.status_kebutuhan === 'Terpenuhi' ? 'Belum Terpenuhi' : 'Terpenuhi',
+                                  },
+                                  'Memperbarui status inventaris...',
+                                  `Status "${inv.nama_barang}" diperbarui.`
+                                )
+                              }
+                              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border cursor-pointer disabled:opacity-50 ${
+                                inv.status_kebutuhan === 'Terpenuhi'
+                                  ? 'bg-emerald-400/20 border-emerald-300/35 text-emerald-200'
+                                  : 'bg-amber-400/20 border-amber-300/35 text-amber-200'
+                              }`}
+                            >
+                              {inv.status_kebutuhan}
+                            </button>
+                          ) : (
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+                                inv.status_kebutuhan === 'Terpenuhi'
+                                  ? 'bg-emerald-400/20 border-emerald-300/35 text-emerald-200'
+                                  : 'bg-amber-400/20 border-amber-300/35 text-amber-200'
+                              }`}
+                            >
+                              {inv.status_kebutuhan}
+                            </span>
+                          )}
+                          {isAdmin && (
+                            <button
+                              disabled={saving}
+                              onClick={() => {
+                                if (confirm(`Hapus inventaris "${inv.nama_barang}"?`)) {
+                                  sendAction(
+                                    'DELETE_INVENTARIS',
+                                    { id: inv.id },
+                                    'Menghapus inventaris...',
+                                    `Inventaris "${inv.nama_barang}" dihapus.`
+                                  );
+                                }
+                              }}
+                              className="p-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 text-rose-200 cursor-pointer disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
     </div>
   );
 }

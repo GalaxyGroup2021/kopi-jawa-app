@@ -62,6 +62,24 @@ export async function POST(request) {
     }
 
     if (action === 'DELETE_BAHAN') {
+      const [linkedMenus] = await connection.query(
+        `SELECT DISTINCT p.nama_produk
+         FROM resep_detail rd
+         JOIN produk p ON rd.produk_id = p.id
+         WHERE rd.bahan_baku_id = ?`,
+        [payload.id]
+      );
+
+      if (linkedMenus.length > 0) {
+        const daftarMenu = linkedMenus.map((m) => m.nama_produk).join(', ');
+        return NextResponse.json(
+          {
+            error: `Bahan baku tidak dapat dihapus karena terhubung ke menu: ${daftarMenu}.`,
+          },
+          { status: 400 }
+        );
+      }
+
       await connection.query('DELETE FROM bahan_baku WHERE id = ?', [payload.id]);
       return NextResponse.json({ success: true });
     }
@@ -104,7 +122,10 @@ export async function POST(request) {
     }
 
     if (action === 'DELETE_MENU') {
+      await connection.beginTransaction();
+      await connection.query('DELETE FROM resep_detail WHERE produk_id = ?', [payload.id]);
       await connection.query('DELETE FROM produk WHERE id = ?', [payload.id]);
+      await connection.commit();
       return NextResponse.json({ success: true });
     }
 
@@ -146,7 +167,9 @@ export async function POST(request) {
 
     return NextResponse.json({ error: 'Action tidak dikenali' }, { status: 400 });
   } catch (error) {
-    await connection.rollback();
+    try {
+      await connection.rollback();
+    } catch {}
     return NextResponse.json({ error: error.message }, { status: 500 });
   } finally {
     connection.release();
