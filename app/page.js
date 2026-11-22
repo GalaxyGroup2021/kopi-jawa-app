@@ -1,4 +1,5 @@
-﻿'use client';
+﻿import SmaraPlayCodeWidget from '@/components/SmaraPlayCodeWidget';
+'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
@@ -652,6 +653,7 @@ export default function SmaraKopiApp() {
 
           {/* KONTEN UTAMA KANAN */}
           <main className="flex-1 w-full min-w-0 space-y-5">
+        <div className="mb-5"><SmaraPlayCodeWidget /></div>
             {!isAdmin && (
               <div className="smara-glass-soft px-4 py-3 rounded-2xl text-sky-100 flex items-center gap-2.5 text-xs">
                 <Eye className="w-4 h-4 text-sky-300 shrink-0" />
@@ -1600,3 +1602,4 @@ export default function SmaraKopiApp() {
     </div>
   );
 }
+
